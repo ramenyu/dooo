@@ -3,6 +3,7 @@ import { getTodosByUserId, createTodo, updateTodo, deleteTodo } from '@/lib/supa
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
 export async function GET(request: NextRequest) {
   try {

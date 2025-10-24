@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server'
-import { getUsers } from '@/lib/database'
+
+// Force dynamic rendering
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
 export async function GET() {
   try {
-    const users = getUsers()
-    // Return users without passwords
-    const safeUsers = users.map(({ password, ...user }) => user)
-    return NextResponse.json(safeUsers)
+    // This endpoint is deprecated - use /api/users with organizationId instead
+    return NextResponse.json({ 
+      error: 'This endpoint is deprecated. Use /api/users?organizationId=... instead.',
+      message: 'Please use the organization-specific user endpoint'
+    }, { status: 410 })
   } catch (error) {
     return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 })
   }
