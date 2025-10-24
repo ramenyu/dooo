@@ -421,92 +421,6 @@
     "createdAt": "2025-10-23T14:27:59.556Z"
   },
   {
-    "id": "53e92148-4e3b-4ef6-bc8e-604372f81c78",
-    "text": "check this out",
-    "assignedTo": "Rymon, Gary, Zane",
-    "assignedToUserId": "42fba789-ba6d-4b6b-8f7b-4712f45a4a03",
-    "createdBy": "Rymon",
-    "createdByUserId": "1ee19fa1-a8fc-4a24-99d5-667524d33ec8",
-    "organizationId": "57015e2b-0416-4a98-9bd2-7cac89b805fc",
-    "dueDate": "2025-10-24T03:47:23.376Z",
-    "completed": false,
-    "completedBy": "Rymon",
-    "attachedLinks": [
-      "https://www.anthropic.com/news/skills"
-    ],
-    "createdAt": "2025-10-24T03:50:26.025Z"
-  },
-  {
-    "id": "dfcf90ef-8128-4b7f-b125-209d7a34bd8b",
-    "text": "hi",
-    "assignedTo": "Rymon",
-    "assignedToUserId": "42fba789-ba6d-4b6b-8f7b-4712f45a4a03",
-    "createdBy": "Rymon",
-    "createdByUserId": "1ee19fa1-a8fc-4a24-99d5-667524d33ec8",
-    "organizationId": "57015e2b-0416-4a98-9bd2-7cac89b805fc",
-    "dueDate": "2025-10-24T03:47:40.726Z",
-    "completed": true,
-    "completedBy": "Rymon",
-    "attachedLinks": [],
-    "createdAt": "2025-10-24T03:47:40.736Z"
-  },
-  {
-    "id": "2f309c7b-9f3d-4226-9093-ee183b0c3d52",
-    "text": "test",
-    "assignedTo": "Rymon",
-    "assignedToUserId": "42fba789-ba6d-4b6b-8f7b-4712f45a4a03",
-    "createdBy": "Rymon",
-    "createdByUserId": "1ee19fa1-a8fc-4a24-99d5-667524d33ec8",
-    "organizationId": "57015e2b-0416-4a98-9bd2-7cac89b805fc",
-    "dueDate": "2025-10-24T03:47:41.959Z",
-    "completed": true,
-    "completedBy": "Rymon",
-    "attachedLinks": [],
-    "createdAt": "2025-10-24T03:47:41.975Z"
-  },
-  {
-    "id": "33eb3bc1-f82a-44f7-945e-6c38f4199ddd",
-    "text": "hi hi test",
-    "assignedTo": "Rymon",
-    "assignedToUserId": "42fba789-ba6d-4b6b-8f7b-4712f45a4a03",
-    "createdBy": "Rymon",
-    "createdByUserId": "1ee19fa1-a8fc-4a24-99d5-667524d33ec8",
-    "organizationId": "57015e2b-0416-4a98-9bd2-7cac89b805fc",
-    "dueDate": "2025-10-24T03:50:00.727Z",
-    "completed": true,
-    "completedBy": "Rymon",
-    "attachedLinks": [],
-    "createdAt": "2025-10-24T03:50:00.739Z"
-  },
-  {
-    "id": "aba6e480-7199-4e1b-8360-88b756fd2a42",
-    "text": "test",
-    "assignedTo": "Rymon",
-    "assignedToUserId": "42fba789-ba6d-4b6b-8f7b-4712f45a4a03",
-    "createdBy": "Rymon",
-    "createdByUserId": "1ee19fa1-a8fc-4a24-99d5-667524d33ec8",
-    "organizationId": "57015e2b-0416-4a98-9bd2-7cac89b805fc",
-    "dueDate": "2025-10-24T03:50:02.873Z",
-    "completed": true,
-    "completedBy": "Rymon",
-    "attachedLinks": [],
-    "createdAt": "2025-10-24T03:50:02.893Z"
-  },
-  {
-    "id": "81fe97e9-5a44-4684-9435-da10d426fcc3",
-    "text": "test",
-    "assignedTo": "Rymon",
-    "assignedToUserId": "42fba789-ba6d-4b6b-8f7b-4712f45a4a03",
-    "createdBy": "Rymon",
-    "createdByUserId": "1ee19fa1-a8fc-4a24-99d5-667524d33ec8",
-    "organizationId": "57015e2b-0416-4a98-9bd2-7cac89b805fc",
-    "dueDate": "2025-10-24T03:50:04.173Z",
-    "completed": true,
-    "completedBy": "Rymon",
-    "attachedLinks": [],
-    "createdAt": "2025-10-24T03:50:04.193Z"
-  },
-  {
     "id": "618e2256-b2c7-4dc7-a134-4c06159d09cc",
     "text": "check this out",
     "assignedTo": "Gary, Rymon",
@@ -563,5 +477,19 @@
     "completedBy": "",
     "attachedLinks": [],
     "createdAt": "2025-10-24T04:00:30.671Z"
+  },
+  {
+    "id": "e2544191-88a8-4554-8c31-5b59c4d4e7de",
+    "text": "test",
+    "assignedTo": "Rymon",
+    "assignedToUserId": "42fba789-ba6d-4b6b-8f7b-4712f45a4a03",
+    "createdBy": "Rymon",
+    "createdByUserId": "1ee19fa1-a8fc-4a24-99d5-667524d33ec8",
+    "organizationId": "57015e2b-0416-4a98-9bd2-7cac89b805fc",
+    "dueDate": "2025-10-24T05:49:56.479Z",
+    "completed": false,
+    "completedBy": "",
+    "attachedLinks": [],
+    "createdAt": "2025-10-24T05:49:56.487Z"
   }
 ]
