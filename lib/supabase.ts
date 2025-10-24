@@ -1,0 +1,95 @@
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+export const supabase = createClient(supabaseUrl, supabaseKey)
+
+// Database types
+export interface Database {
+  public: {
+    Tables: {
+      users: {
+        Row: {
+          id: string
+          name: string
+          organization_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          organization_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          organization_id?: string
+          created_at?: string
+        }
+      }
+      organizations: {
+        Row: {
+          id: string
+          name: string
+          domain: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          domain: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          domain?: string
+          created_at?: string
+        }
+      }
+      todos: {
+        Row: {
+          id: string
+          text: string
+          assigned_to: string
+          created_by: string
+          created_by_user_id: string
+          completed: boolean
+          completed_by: string
+          due_date: string | null
+          organization_id: string
+          attached_links: string[]
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          text: string
+          assigned_to: string
+          created_by: string
+          created_by_user_id: string
+          completed?: boolean
+          completed_by?: string
+          due_date?: string | null
+          organization_id: string
+          attached_links?: string[]
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          text?: string
+          assigned_to?: string
+          created_by?: string
+          created_by_user_id?: string
+          completed?: boolean
+          completed_by?: string
+          due_date?: string | null
+          organization_id?: string
+          attached_links?: string[]
+          created_at?: string
+        }
+      }
+    }
+  }
+}
