@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getUsersByOrganization } from '@/lib/database'
+import { getUsersByOrganization } from '@/lib/supabase-db'
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,12 +10,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 })
     }
 
-    const users = getUsersByOrganization(organizationId)
+    const users = await getUsersByOrganization(organizationId)
     // Remove passwords from response
     const usersWithoutPasswords = users.map(({ password, ...user }) => user)
     
     return NextResponse.json(usersWithoutPasswords)
   } catch (error) {
+    console.error('Get organization users error:', error)
     return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 })
   }
 }
