@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getTodosByUserId, createTodo, updateTodo, deleteTodo } from '@/lib/supabase-db'
+import { getTodosByUserName, createTodo, updateTodo, deleteTodo } from '@/lib/supabase-db'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
@@ -7,14 +7,14 @@ export const runtime = 'nodejs'
 
 export async function GET(request: NextRequest) {
   try {
-    const userId = request.nextUrl.searchParams.get('userId')
+    const userName = request.nextUrl.searchParams.get('userName')
     const organizationId = request.nextUrl.searchParams.get('organizationId')
     
-    if (!userId || !organizationId) {
-      return NextResponse.json({ error: 'userId and organizationId are required' }, { status: 400 })
+    if (!userName || !organizationId) {
+      return NextResponse.json({ error: 'userName and organizationId are required' }, { status: 400 })
     }
     
-    const todos = await getTodosByUserId(userId, organizationId)
+    const todos = await getTodosByUserName(userName, organizationId)
     return NextResponse.json(todos)
   } catch (error) {
     console.error('Get todos error:', error)

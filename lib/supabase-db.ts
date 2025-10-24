@@ -20,7 +20,7 @@ export async function findUserByNameAndOrganization(name: string, organizationId
   const { data, error } = await supabase
     .from('users')
     .select('*')
-    .eq('name', name)
+    .ilike('name', name) // Case-insensitive matching
     .eq('organization_id', organizationId)
     .single()
   
@@ -84,12 +84,12 @@ export async function createTodo(todo: Database['public']['Tables']['todos']['In
   return data
 }
 
-export async function getTodosByUserId(userId: string, organizationId: string) {
+export async function getTodosByUserName(userName: string, organizationId: string) {
   const { data, error } = await supabase
     .from('todos')
     .select('*')
     .eq('organization_id', organizationId)
-    .contains('assigned_to', userId)
+    .ilike('assigned_to', `%${userName}%`)
   
   if (error) throw error
   return data || []

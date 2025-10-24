@@ -11,9 +11,12 @@ CREATE TABLE users (
   name TEXT NOT NULL,
   password TEXT NOT NULL,
   organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  UNIQUE(name, organization_id)
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Create case-insensitive unique index for user names
+CREATE UNIQUE INDEX users_name_organization_id_lower_idx 
+ON users (LOWER(name), organization_id);
 
 -- Create todos table
 CREATE TABLE todos (

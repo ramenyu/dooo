@@ -67,12 +67,12 @@ async function fetchUsersByOrganization(organizationId: string): Promise<User[]>
   return response.json()
 }
 
-async function fetchTodos(userId?: string, organizationId?: string): Promise<Todo[]> {
-  if (!userId || !organizationId) {
-    console.error('fetchTodos called without userId or organizationId')
+async function fetchTodos(userName?: string, organizationId?: string): Promise<Todo[]> {
+  if (!userName || !organizationId) {
+    console.error('fetchTodos called without userName or organizationId')
     return []
   }
-  const url = `/api/todos?userId=${userId}&organizationId=${organizationId}`
+  const url = `/api/todos?userName=${encodeURIComponent(userName)}&organizationId=${organizationId}`
   const response = await fetch(url)
   if (!response.ok) throw new Error('Failed to fetch todos')
   return response.json()
@@ -247,13 +247,13 @@ export default function Home() {
                 body: JSON.stringify({
                   id: todo.id,
                   completed: allCompleted,
-                  completedBy: newCompletedBy
+                  completed_by: newCompletedBy
                 })
               })
               .then(() => {
                 setTodos(prev => prev.map(t => 
                   t.id === todo.id 
-                    ? { ...t, completed: allCompleted, completedBy: newCompletedBy }
+                    ? { ...t, completed: allCompleted, completed_by: newCompletedBy }
                     : t
                 ))
               })
@@ -362,7 +362,7 @@ export default function Home() {
   // Load todos from API when user changes
   useEffect(() => {
     if (currentUser) {
-      fetchTodos(currentUser.id, currentUser.organization_id).then(setTodos).catch(console.error)
+      fetchTodos(currentUser.name, currentUser.organization_id).then(setTodos).catch(console.error)
       // Request notification permission when user logs in
       requestNotificationPermission()
     }
@@ -374,7 +374,7 @@ export default function Home() {
 
     const interval = setInterval(async () => {
       try {
-        const updatedTodos = await fetchTodos(currentUser.id, currentUser.organization_id)
+        const updatedTodos = await fetchTodos(currentUser.name, currentUser.organization_id)
         
         // Check for newly assigned todos (created by someone else)
         const newAssignedTodos = updatedTodos.filter(newTodo => {
