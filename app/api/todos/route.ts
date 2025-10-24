@@ -1,59 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getTodos, addTodo, updateTodo, deleteTodo, getTodosByUserId, findUserByName } from '@/lib/database'
+import { getTodosByUserId, createTodo, updateTodo, deleteTodo } from '@/lib/supabase-db'
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId')
+    const organizationId = searchParams.get('organizationId')
     
-    let todos
-    if (userId) {
-      todos = getTodosByUserId(userId)
-    } else {
-      todos = getTodos()
+    if (!userId || !organizationId) {
+      return NextResponse.json({ error: 'userId and organizationId are required' }, { status: 400 })
     }
     
+    const todos = await getTodosByUserId(userId, organizationId)
     return NextResponse.json(todos)
   } catch (error) {
+    console.error('Get todos error:', error)
     return NextResponse.json({ error: 'Failed to fetch todos' }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const { text, assignedTo, createdBy, createdByUserId, dueDate, organizationId, attachedLinks } = await request.json()
+    const { text, assigned_to, created_by, created_by_user_id, due_date, organization_id, attached_links } = await request.json()
     
-    if (!text || !assignedTo || !createdBy || !createdByUserId || !organizationId) {
+    if (!text || !assigned_to || !created_by || !created_by_user_id || !organization_id) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // Handle multiple assignees - store comma-separated string
-    // For now, we'll use the first user's ID as the primary assignedToUserId
-    // In a more complex system, you might want to create separate records for each assignee
-    const assigneeNames = assignedTo.split(', ').map((name: string) => name.trim())
-    const primaryAssignee = findUserByName(assigneeNames[0])
-    if (!primaryAssignee) {
-      return NextResponse.json({ error: 'Primary assigned user not found' }, { status: 404 })
-    }
-
-    const newTodo = {
-      id: crypto.randomUUID(),
+    const newTodo = await createTodo({
       text,
-      assignedTo, // Keep the full comma-separated string
-      assignedToUserId: primaryAssignee.id, // Use first user's ID as primary
-      createdBy,
-      createdByUserId,
-      organizationId, // Add organization ID
-      dueDate: dueDate || new Date().toISOString(),
+      assigned_to,
+      created_by,
+      created_by_user_id,
+      organization_id,
+      due_date: due_date || new Date().toISOString(),
       completed: false,
-      completedBy: '', // Initialize as empty string
-      attachedLinks: attachedLinks || [], // Add attached links
-      createdAt: new Date().toISOString()
-    }
-
-    addTodo(newTodo)
+      completed_by: '',
+      attached_links: attached_links || [],
+      created_at: new Date().toISOString()
+    })
+    
     return NextResponse.json(newTodo, { status: 201 })
   } catch (error) {
+    console.error('Create todo error:', error)
     return NextResponse.json({ error: 'Failed to create todo' }, { status: 500 })
   }
 }
@@ -66,13 +55,10 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Todo ID is required' }, { status: 400 })
     }
 
-    const success = updateTodo(id, updates)
-    if (!success) {
-      return NextResponse.json({ error: 'Todo not found' }, { status: 404 })
-    }
-
-    return NextResponse.json({ success: true })
+    const updatedTodo = await updateTodo(id, updates)
+    return NextResponse.json(updatedTodo)
   } catch (error) {
+    console.error('Update todo error:', error)
     return NextResponse.json({ error: 'Failed to update todo' }, { status: 500 })
   }
 }
@@ -86,13 +72,10 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Todo ID is required' }, { status: 400 })
     }
 
-    const success = deleteTodo(id)
-    if (!success) {
-      return NextResponse.json({ error: 'Todo not found' }, { status: 404 })
-    }
-
+    await deleteTodo(id)
     return NextResponse.json({ success: true })
   } catch (error) {
+    console.error('Delete todo error:', error)
     return NextResponse.json({ error: 'Failed to delete todo' }, { status: 500 })
   }
 }

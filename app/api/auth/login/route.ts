@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { findUserByNameAndOrganization } from '@/lib/database'
+import { findUserByNameAndOrganization } from '@/lib/supabase-db'
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Name, password, and organization ID are required' }, { status: 400 })
     }
 
-    const user = findUserByNameAndOrganization(name, organizationId)
+    const user = await findUserByNameAndOrganization(name, organizationId)
     if (!user || user.password !== password) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     }
@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
     const { password: _, ...userWithoutPassword } = user
     return NextResponse.json(userWithoutPassword)
   } catch (error) {
+    console.error('Login error:', error)
     return NextResponse.json({ error: 'Failed to authenticate' }, { status: 500 })
   }
 }

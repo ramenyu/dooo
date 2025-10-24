@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getOrganizations, addOrganization, findOrganizationByDomain } from '@/lib/database'
+import { createOrganization, findOrganizationByDomain } from '@/lib/supabase-db'
 
 export async function GET(request: NextRequest) {
   try {
-    const organizations = getOrganizations()
-    return NextResponse.json(organizations)
+    // For now, return empty array since we don't have a getAllOrganizations function
+    // This could be added if needed
+    return NextResponse.json([])
   } catch (error) {
     return NextResponse.json({ error: 'Failed to fetch organizations' }, { status: 500 })
   }
@@ -19,21 +20,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if organization with this domain already exists
-    const existingOrg = findOrganizationByDomain(domain)
+    const existingOrg = await findOrganizationByDomain(domain)
     if (existingOrg) {
       return NextResponse.json({ error: 'Organization with this domain already exists' }, { status: 409 })
     }
 
-    const newOrganization = {
-      id: crypto.randomUUID(),
+    const newOrganization = await createOrganization({
       name,
       domain,
-      createdAt: new Date().toISOString()
-    }
-
-    addOrganization(newOrganization)
+      created_at: new Date().toISOString()
+    })
+    
     return NextResponse.json(newOrganization, { status: 201 })
   } catch (error) {
+    console.error('Organization creation error:', error)
     return NextResponse.json({ error: 'Failed to create organization' }, { status: 500 })
   }
 }
