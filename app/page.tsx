@@ -238,7 +238,7 @@ export default function Home() {
               }
               
               // Check if all assignees have completed
-              const assignees = todo.assignedTo.split(', ').map(name => name.trim())
+              const assignees = todo.assigned_to.split(', ').map(name => name.trim())
               const allCompleted = assignees.every(assignee => newCompletedBy.split(', ').includes(assignee))
               
               fetch('/api/todos', {
@@ -598,13 +598,13 @@ export default function Home() {
         
         try {
           await updateTodo(id, { 
-            completedBy: newCompletedBy,
+            completed_by: newCompletedBy,
             completed: allCompleted
           })
           setTodos(prev => prev.map(t => 
             t.id === id ? { 
               ...t, 
-              completedBy: newCompletedBy,
+              completed_by: newCompletedBy,
               completed: allCompleted
             } : t
           ))
@@ -618,13 +618,13 @@ export default function Home() {
         
         try {
           await updateTodo(id, { 
-            completedBy: newCompletedBy,
+            completed_by: newCompletedBy,
             completed: allCompleted
           })
           setTodos(prev => prev.map(t => 
             t.id === id ? { 
               ...t, 
-              completedBy: newCompletedBy,
+              completed_by: newCompletedBy,
               completed: allCompleted
             } : t
           ))
@@ -640,13 +640,13 @@ export default function Home() {
     if (!todo) return
 
     try {
-      // Update the todo's createdAt to current time to move it to top
+      // Update the todo's created_at to current time to move it to top
       const newCreatedAt = new Date().toISOString()
-      await updateTodo(id, { createdAt: newCreatedAt })
+      await updateTodo(id, { created_at: newCreatedAt })
       
       // Update local state
       setTodos(prev => prev.map(t => 
-        t.id === id ? { ...t, createdAt: newCreatedAt } : t
+        t.id === id ? { ...t, created_at: newCreatedAt } : t
       ))
       
       // Trigger shake animation for local feedback
@@ -852,11 +852,11 @@ export default function Home() {
     
     try {
       const user = await loginUser(name, password, currentOrganization.id)
-      setCurrentUser({ ...user, organizationId: currentOrganization.id })
+      setCurrentUser({ ...user, organization_id: currentOrganization.id })
       
       // Add user to local users list for @ mentions
       if (!users.find(u => u.id === user.id)) {
-        setUsers(prev => [...prev, { ...user, organizationId: currentOrganization.id }])
+        setUsers(prev => [...prev, { ...user, organization_id: currentOrganization.id }])
       }
     } catch (error) {
       alert('Invalid credentials')
@@ -868,8 +868,8 @@ export default function Home() {
     
     try {
       const newUser = await registerUser(name, password, currentOrganization.id)
-      setCurrentUser({ ...newUser, organizationId: currentOrganization.id })
-      setUsers(prev => [...prev, { ...newUser, organizationId: currentOrganization.id }])
+      setCurrentUser({ ...newUser, organization_id: currentOrganization.id })
+      setUsers(prev => [...prev, { ...newUser, organization_id: currentOrganization.id }])
       
       // Refresh the allUsers list to include the new user for @ mentions
       const orgUsers = await fetchUsersByOrganization(currentOrganization.id)
