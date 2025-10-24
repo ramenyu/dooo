@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -166,6 +166,89 @@ export default function Home() {
   const [alertTodoId, setAlertTodoId] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
+  // Memoized computations - MUST be before any conditional returns
+  const userTodos = useMemo(() => {
+    if (!currentUser) return []
+    return todos
+    .filter(todo => {
+      // Filter by organization
+      if (todo.organization_id !== currentUser.organization_id) return false
+      
+      // Filter by "Assigned by me"
+      if (showAssignedByMe) {
+        if (todo.created_by !== currentUser.name) return false
+      } else {
+        // Normal filter: show items assigned to me
+        const assignees = todo.assigned_to.split(', ').map(name => name.trim())
+        if (!assignees.includes(currentUser.name)) return false
+      }
+      
+      // Apply pending/completed filters
+      if (!showPending && !showCompleted) return false // Hide all if both filters off
+      if (showPending && showCompleted) return true // Show all if both filters on
+      if (showPending && !todo.completed) return true // Show only pending
+      if (showCompleted && todo.completed) return true // Show only completed
+      return false
+    })
+    .sort((a, b) => {
+      // Priority groups:
+      // 1. Not yet completed by current user (and not fully completed)
+      // 2. Waiting for other users to complete (current user completed but not all)
+      // 3. Fully completed tasks
+      
+      const aAssignees = a.assigned_to.split(', ').map(name => name.trim())
+      const bAssignees = b.assigned_to.split(', ').map(name => name.trim())
+      const aCompletedBy = a.completed_by ? a.completed_by.split(', ').map(name => name.trim()) : []
+      const bCompletedBy = b.completed_by ? b.completed_by.split(', ').map(name => name.trim()) : []
+      
+      const aCurrentUserCompleted = aCompletedBy.includes(currentUser.name)
+      const bCurrentUserCompleted = bCompletedBy.includes(currentUser.name)
+      
+      // Group 1: Not completed by current user
+      const aGroup1 = !a.completed && !aCurrentUserCompleted
+      const bGroup1 = !b.completed && !bCurrentUserCompleted
+      
+      // Group 2: Current user completed, waiting for others
+      const aGroup2 = !a.completed && aCurrentUserCompleted
+      const bGroup2 = !b.completed && bCurrentUserCompleted
+      
+      // Group 3: Fully completed
+      const aGroup3 = a.completed
+      const bGroup3 = b.completed
+      
+      // Sort by groups
+      if (aGroup1 && !bGroup1) return -1
+      if (!aGroup1 && bGroup1) return 1
+      if (aGroup2 && !bGroup2) return -1
+      if (!aGroup2 && bGroup2) return 1
+      if (aGroup3 && !bGroup3) return 1
+      if (!aGroup3 && bGroup3) return -1
+      
+      // Within same group, newest first (by creation time)
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    })
+  }, [todos, currentUser, showAssignedByMe, showPending, showCompleted])
+
+  const pendingCount = useMemo(() => {
+    if (!currentUser) return 0
+    return todos.filter(todo => {
+    const assignees = todo.assigned_to.split(', ').map(name => name.trim())
+    return assignees.includes(currentUser.name) && 
+           todo.organization_id === currentUser.organization_id && 
+           !todo.completed
+  }).length
+  }, [todos, currentUser])
+  
+  const completedCount = useMemo(() => {
+    if (!currentUser) return 0
+    return todos.filter(todo => {
+    const assignees = todo.assigned_to.split(', ').map(name => name.trim())
+    return assignees.includes(currentUser.name) && 
+           todo.organization_id === currentUser.organization_id && 
+           todo.completed
+  }).length
+  }, [todos, currentUser])
+
   // Keyboard shortcut handler - must be at top level
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -215,23 +298,8 @@ export default function Home() {
       // Enter to complete selected todo (only when not in input)
       if (event.key === 'Enter' && !inputRef.current?.contains(document.activeElement) && selectedTodoIndex >= 0) {
         event.preventDefault()
-        // Filter todos inline to avoid dependency issues
-        const filteredTodos = todos.filter(todo => {
-          if (!currentUser) return false
-          const assignees = todo.assigned_to.split(', ').map(name => name.trim())
-          return assignees.includes(currentUser.name) && todo.organization_id === currentUser.organization_id
-        })
-        
-        // Sort the filtered todos the same way as userTodos
-        const sortedTodos = filteredTodos.sort((a, b) => {
-          // Completed todos go to bottom
-          if (a.completed && !b.completed) return 1
-          if (!a.completed && b.completed) return -1
-          // Within same completion status, newest first (by creation time)
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        })
-        
-        const selectedTodo = sortedTodos[selectedTodoIndex]
+        // Use userTodos which respects all filters
+        const selectedTodo = userTodos[selectedTodoIndex]
         if (selectedTodo && currentUser) {
           // Call the completion function directly
           const todo = todos.find(t => t.id === selectedTodo.id)
@@ -286,23 +354,8 @@ export default function Home() {
       if ((event.key === 'Delete' || event.key === 'Backspace') && !inputRef.current?.contains(document.activeElement) && selectedTodoIndex >= 0) {
         console.log('Delete key pressed, selectedTodoIndex:', selectedTodoIndex)
         event.preventDefault()
-        // Filter todos inline to avoid dependency issues
-        const filteredTodos = todos.filter(todo => {
-          if (!currentUser) return false
-          const assignees = todo.assigned_to.split(', ').map(name => name.trim())
-          return assignees.includes(currentUser.name) && todo.organization_id === currentUser.organization_id
-        })
-        
-        // Sort the filtered todos the same way as userTodos
-        const sortedTodos = filteredTodos.sort((a, b) => {
-          // Completed todos go to bottom
-          if (a.completed && !b.completed) return 1
-          if (!a.completed && b.completed) return -1
-          // Within same completion status, newest first (by creation time)
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        })
-        
-        const selectedTodo = sortedTodos[selectedTodoIndex]
+        // Use userTodos which respects all filters
+        const selectedTodo = userTodos[selectedTodoIndex]
         if (selectedTodo) {
           // Check if current user is the creator
           if (selectedTodo.created_by !== currentUser?.name) {
@@ -327,20 +380,11 @@ export default function Home() {
               setTodos(prev => prev.filter(t => t.id !== selectedTodo.id))
               // Keep selection on the same index (item shifts up to fill the gap)
               // If we're at the last item, move to the previous one
-              const newFilteredTodos = todos.filter(t => t.id !== selectedTodo.id).filter(todo => {
-                if (!currentUser) return false
-                const assignees = todo.assigned_to.split(', ').map(name => name.trim())
-                return assignees.includes(currentUser.name) && todo.organization_id === currentUser.organization_id
-              })
-              const newSortedTodos = newFilteredTodos.sort((a, b) => {
-                if (a.completed && !b.completed) return 1
-                if (!a.completed && b.completed) return -1
-                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-              })
+              const newLength = userTodos.length - 1
               
               // Adjust selection index
-              if (selectedTodoIndex >= newSortedTodos.length) {
-                setSelectedTodoIndex(newSortedTodos.length - 1)
+              if (selectedTodoIndex >= newLength) {
+                setSelectedTodoIndex(newLength - 1)
               }
               // Otherwise keep the same index (item shifts up)
             })
@@ -352,7 +396,7 @@ export default function Home() {
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [todos, selectedTodoIndex, currentUser])
+  }, [todos, selectedTodoIndex, currentUser, userTodos])
 
   // Default task suggestions
   const defaultSuggestions = [
@@ -455,7 +499,7 @@ export default function Home() {
     }
   }, [currentUser])
 
-  // Poll for updates every 5 seconds when user is logged in
+  // Poll for updates every 10 seconds when user is logged in (reduced for performance)
   useEffect(() => {
     if (!currentUser || !currentOrganization) return
 
@@ -523,7 +567,7 @@ export default function Home() {
       } catch (error) {
         console.error('Failed to fetch updated todos:', error)
       }
-    }, 5000)
+    }, 10000) // Reduced from 5000ms to 10000ms for better performance
 
     return () => clearInterval(interval)
   }, [currentUser, currentOrganization, todos])
@@ -1072,81 +1116,6 @@ export default function Home() {
       </div>
     )
   }
-
-  // Filter todos for current user and apply pending/completed filters
-  const userTodos = todos
-    .filter(todo => {
-      // Filter by organization
-      if (todo.organization_id !== currentUser.organization_id) return false
-      
-      // Filter by "Assigned by me"
-      if (showAssignedByMe) {
-        if (todo.created_by !== currentUser.name) return false
-      } else {
-        // Normal filter: show items assigned to me
-        const assignees = todo.assigned_to.split(', ').map(name => name.trim())
-        if (!assignees.includes(currentUser.name)) return false
-      }
-      
-      // Apply pending/completed filters
-      if (!showPending && !showCompleted) return false // Hide all if both filters off
-      if (showPending && showCompleted) return true // Show all if both filters on
-      if (showPending && !todo.completed) return true // Show only pending
-      if (showCompleted && todo.completed) return true // Show only completed
-      return false
-    })
-    .sort((a, b) => {
-      // Priority groups:
-      // 1. Not yet completed by current user (and not fully completed)
-      // 2. Waiting for other users to complete (current user completed but not all)
-      // 3. Fully completed tasks
-      
-      const aAssignees = a.assigned_to.split(', ').map(name => name.trim())
-      const bAssignees = b.assigned_to.split(', ').map(name => name.trim())
-      const aCompletedBy = a.completed_by ? a.completed_by.split(', ').map(name => name.trim()) : []
-      const bCompletedBy = b.completed_by ? b.completed_by.split(', ').map(name => name.trim()) : []
-      
-      const aCurrentUserCompleted = aCompletedBy.includes(currentUser.name)
-      const bCurrentUserCompleted = bCompletedBy.includes(currentUser.name)
-      
-      // Group 1: Not completed by current user
-      const aGroup1 = !a.completed && !aCurrentUserCompleted
-      const bGroup1 = !b.completed && !bCurrentUserCompleted
-      
-      // Group 2: Current user completed, waiting for others
-      const aGroup2 = !a.completed && aCurrentUserCompleted
-      const bGroup2 = !b.completed && bCurrentUserCompleted
-      
-      // Group 3: Fully completed
-      const aGroup3 = a.completed
-      const bGroup3 = b.completed
-      
-      // Sort by groups
-      if (aGroup1 && !bGroup1) return -1
-      if (!aGroup1 && bGroup1) return 1
-      if (aGroup2 && !bGroup2) return -1
-      if (!aGroup2 && bGroup2) return 1
-      if (aGroup3 && !bGroup3) return 1
-      if (!aGroup3 && bGroup3) return -1
-      
-      // Within same group, newest first (by creation time)
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    })
-  
-  // Calculate counts
-  const pendingCount = todos.filter(todo => {
-    const assignees = todo.assigned_to.split(', ').map(name => name.trim())
-    return assignees.includes(currentUser.name) && 
-           todo.organization_id === currentUser.organization_id && 
-           !todo.completed
-  }).length
-  
-  const completedCount = todos.filter(todo => {
-    const assignees = todo.assigned_to.split(', ').map(name => name.trim())
-    return assignees.includes(currentUser.name) && 
-           todo.organization_id === currentUser.organization_id && 
-           todo.completed
-  }).length
 
   // Show loading state briefly to prevent flash
   if (isLoading) {
