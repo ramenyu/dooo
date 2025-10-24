@@ -10,6 +10,7 @@ CREATE TABLE organizations (
 CREATE TABLE users (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
+  password TEXT NOT NULL,
   organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   UNIQUE(name, organization_id)

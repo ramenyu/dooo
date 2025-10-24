@@ -17,18 +17,21 @@ export interface Database {
         Row: {
           id: string
           name: string
+          password: string
           organization_id: string
           created_at: string
         }
         Insert: {
           id?: string
           name: string
+          password: string
           organization_id: string
           created_at?: string
         }
         Update: {
           id?: string
           name?: string
+          password?: string
           organization_id?: string
           created_at?: string
         }
