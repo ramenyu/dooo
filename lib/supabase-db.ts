@@ -50,11 +50,11 @@ export async function createOrganization(org: Database['public']['Tables']['orga
   return data
 }
 
-export async function findOrganizationByDomain(domain: string) {
-  const { data, error } = await supabase
+export async function findOrganizationByName(name: string) {
+  const { data, error} = await supabase
     .from('organizations')
     .select('*')
-    .eq('domain', domain)
+    .eq('name', name)
     .single()
   
   if (error && error.code !== 'PGRST116') throw error

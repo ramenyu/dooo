@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createOrganization, findOrganizationByDomain } from '@/lib/supabase-db'
+import { createOrganization, findOrganizationByName } from '@/lib/supabase-db'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
@@ -7,31 +7,42 @@ export const runtime = 'nodejs'
 
 export async function GET(request: NextRequest) {
   try {
+    const name = request.nextUrl.searchParams.get('name')
+    
+    if (name) {
+      // Find organization by name
+      const org = await findOrganizationByName(name)
+      if (!org) {
+        return NextResponse.json({ error: 'Organization not found' }, { status: 404 })
+      }
+      return NextResponse.json(org)
+    }
+    
     // For now, return empty array since we don't have a getAllOrganizations function
     // This could be added if needed
     return NextResponse.json([])
   } catch (error) {
+    console.error('Get organization error:', error)
     return NextResponse.json({ error: 'Failed to fetch organizations' }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, domain } = await request.json()
+    const { name } = await request.json()
     
-    if (!name || !domain) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    if (!name) {
+      return NextResponse.json({ error: 'Organization name is required' }, { status: 400 })
     }
 
-    // Check if organization with this domain already exists
-    const existingOrg = await findOrganizationByDomain(domain)
+    // Check if organization with this name already exists
+    const existingOrg = await findOrganizationByName(name)
     if (existingOrg) {
-      return NextResponse.json({ error: 'Organization with this domain already exists' }, { status: 409 })
+      return NextResponse.json({ error: 'Organization with this name already exists' }, { status: 409 })
     }
 
     const newOrganization = await createOrganization({
       name,
-      domain,
       created_at: new Date().toISOString()
     })
     

@@ -34,58 +34,51 @@ import { v4 as uuidv4 } from 'uuid'
 export interface Todo {
   id: string
   text: string
-  assignedTo: string
-  assignedToUserId: string
-  createdBy: string
-  createdByUserId: string
-  organizationId: string
-  dueDate: string
+  assigned_to: string
+  assigned_to_user_id?: string
+  created_by: string
+  created_by_user_id: string
+  organization_id: string
+  due_date: string
   completed: boolean
-  completedBy: string // Comma-separated list of user names who have completed their part
-  attachedLinks: string[] // Array of URLs attached to the todo
-  createdAt: string
+  completed_by: string // Comma-separated list of user names who have completed their part
+  attached_links: string[] // Array of URLs attached to the todo
+  created_at: string
 }
 
 export interface Organization {
   id: string
   name: string
-  domain: string
-  createdAt: string
+  created_at: string
 }
 
 export interface User {
   id: string
   name: string
   password?: string
-  organizationId: string
-  createdAt?: string
+  organization_id: string
+  created_at?: string
 }
 
 // API functions
-async function createOrganization(name: string, domain: string): Promise<Organization> {
-  const response = await fetch('/api/organizations', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, domain })
-  })
-  if (!response.ok) throw new Error('Failed to create organization')
-  return response.json()
-}
-
 async function fetchUsersByOrganization(organizationId: string): Promise<User[]> {
   const response = await fetch(`/api/organizations/users?organizationId=${organizationId}`)
   if (!response.ok) throw new Error('Failed to fetch users')
   return response.json()
 }
 
-async function fetchTodos(userId?: string): Promise<Todo[]> {
-  const url = userId ? `/api/todos?userId=${userId}` : '/api/todos'
+async function fetchTodos(userId?: string, organizationId?: string): Promise<Todo[]> {
+  if (!userId || !organizationId) {
+    console.error('fetchTodos called without userId or organizationId')
+    return []
+  }
+  const url = `/api/todos?userId=${userId}&organizationId=${organizationId}`
   const response = await fetch(url)
   if (!response.ok) throw new Error('Failed to fetch todos')
   return response.json()
 }
 
-async function createTodo(todo: Omit<Todo, 'id' | 'createdAt'>): Promise<Todo> {
+async function createTodo(todo: Omit<Todo, 'id' | 'created_at'>): Promise<Todo> {
   const response = await fetch('/api/todos', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -174,8 +167,8 @@ export default function Home() {
             // Filter todos inline to avoid dependency issues
             const filteredTodos = todos.filter(todo => {
               if (!currentUser) return false
-              const assignees = todo.assignedTo.split(', ').map(name => name.trim())
-              return assignees.includes(currentUser.name) && todo.organizationId === currentUser.organizationId
+              const assignees = todo.assigned_to.split(', ').map(name => name.trim())
+              return assignees.includes(currentUser.name) && todo.organization_id === currentUser.organization_id
             })
             if (filteredTodos.length === 0) return -1
             if (prev <= 0) return filteredTodos.length - 1
@@ -190,8 +183,8 @@ export default function Home() {
             // Filter todos inline to avoid dependency issues
             const filteredTodos = todos.filter(todo => {
               if (!currentUser) return false
-              const assignees = todo.assignedTo.split(', ').map(name => name.trim())
-              return assignees.includes(currentUser.name) && todo.organizationId === currentUser.organizationId
+              const assignees = todo.assigned_to.split(', ').map(name => name.trim())
+              return assignees.includes(currentUser.name) && todo.organization_id === currentUser.organization_id
             })
             if (filteredTodos.length === 0) return -1
             if (prev >= filteredTodos.length - 1) return 0
@@ -207,8 +200,8 @@ export default function Home() {
         // Filter todos inline to avoid dependency issues
         const filteredTodos = todos.filter(todo => {
           if (!currentUser) return false
-          const assignees = todo.assignedTo.split(', ').map(name => name.trim())
-          return assignees.includes(currentUser.name) && todo.organizationId === currentUser.organizationId
+          const assignees = todo.assigned_to.split(', ').map(name => name.trim())
+          return assignees.includes(currentUser.name) && todo.organization_id === currentUser.organization_id
         })
         
         // Sort the filtered todos the same way as userTodos
@@ -217,7 +210,7 @@ export default function Home() {
           if (a.completed && !b.completed) return 1
           if (!a.completed && b.completed) return -1
           // Within same completion status, newest first (by creation time)
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         })
         
         const selectedTodo = sortedTodos[selectedTodoIndex]
@@ -232,7 +225,7 @@ export default function Home() {
                 .catch(err => console.error('Failed to delete todo:', err))
             } else {
               // Complete todo
-              const completedBy = todo.completedBy ? todo.completedBy.split(', ').map(name => name.trim()) : []
+              const completedBy = todo.completed_by ? todo.completed_by.split(', ').map(name => name.trim()) : []
               const isCurrentUserCompleted = completedBy.includes(currentUser.name)
               
               let newCompletedBy
@@ -278,8 +271,8 @@ export default function Home() {
         // Filter todos inline to avoid dependency issues
         const filteredTodos = todos.filter(todo => {
           if (!currentUser) return false
-          const assignees = todo.assignedTo.split(', ').map(name => name.trim())
-          return assignees.includes(currentUser.name) && todo.organizationId === currentUser.organizationId
+          const assignees = todo.assigned_to.split(', ').map(name => name.trim())
+          return assignees.includes(currentUser.name) && todo.organization_id === currentUser.organization_id
         })
         
         // Sort the filtered todos the same way as userTodos
@@ -288,7 +281,7 @@ export default function Home() {
           if (a.completed && !b.completed) return 1
           if (!a.completed && b.completed) return -1
           // Within same completion status, newest first (by creation time)
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         })
         
         const selectedTodo = sortedTodos[selectedTodoIndex]
@@ -301,13 +294,13 @@ export default function Home() {
               // If we're at the last item, move to the previous one
               const newFilteredTodos = todos.filter(t => t.id !== selectedTodo.id).filter(todo => {
                 if (!currentUser) return false
-                const assignees = todo.assignedTo.split(', ').map(name => name.trim())
-                return assignees.includes(currentUser.name) && todo.organizationId === currentUser.organizationId
+                const assignees = todo.assigned_to.split(', ').map(name => name.trim())
+                return assignees.includes(currentUser.name) && todo.organization_id === currentUser.organization_id
               })
               const newSortedTodos = newFilteredTodos.sort((a, b) => {
                 if (a.completed && !b.completed) return 1
                 if (!a.completed && b.completed) return -1
-                return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
               })
               
               // Adjust selection index
@@ -369,7 +362,7 @@ export default function Home() {
   // Load todos from API when user changes
   useEffect(() => {
     if (currentUser) {
-      fetchTodos(currentUser.id).then(setTodos).catch(console.error)
+      fetchTodos(currentUser.id, currentUser.organization_id).then(setTodos).catch(console.error)
       // Request notification permission when user logs in
       requestNotificationPermission()
     }
@@ -381,12 +374,12 @@ export default function Home() {
 
     const interval = setInterval(async () => {
       try {
-        const updatedTodos = await fetchTodos(currentUser.id)
+        const updatedTodos = await fetchTodos(currentUser.id, currentUser.organization_id)
         
         // Check for newly assigned todos (created by someone else)
         const newAssignedTodos = updatedTodos.filter(newTodo => {
           const isNew = !todos.find(existingTodo => existingTodo.id === newTodo.id)
-          const isAssignedBySomeoneElse = newTodo.createdBy !== currentUser.name
+          const isAssignedBySomeoneElse = newTodo.created_by !== currentUser.name
           return isNew && isAssignedBySomeoneElse
         })
         
@@ -394,7 +387,7 @@ export default function Home() {
         newAssignedTodos.forEach(todo => {
           showNotification(
             'Hey! Someone needs you!',
-            `${todo.createdBy} needs you to: ${todo.text}`
+            `${todo.created_by} needs you to: ${todo.text}`
           )
         })
         
@@ -404,8 +397,8 @@ export default function Home() {
           if (!existingTodo) return false
           
           // Check if createdAt timestamp changed (indicating move to top)
-          const existingTime = new Date(existingTodo.createdAt).getTime()
-          const updatedTime = new Date(updatedTodo.createdAt).getTime()
+          const existingTime = new Date(existingTodo.created_at).getTime()
+          const updatedTime = new Date(updatedTodo.created_at).getTime()
           const timeDifference = Math.abs(updatedTime - existingTime)
           
           // If timestamp changed by more than 1 second, it was likely moved to top
@@ -416,7 +409,7 @@ export default function Home() {
         movedTodos.forEach(todo => {
           showNotification(
             'Hey! Someone needs you!',
-            `${todo.createdBy} moved "${todo.text}" to top priority`
+            `${todo.created_by} moved "${todo.text}" to top priority`
           )
         })
         
@@ -475,45 +468,34 @@ export default function Home() {
     setCurrentOrganization(org)
   }
 
-  const handleCreateOrganization = async () => {
+  const handleSelectOrganization = async () => {
     if (!newOrgDomain.trim()) return
     
-    console.log('Using organization with domain:', newOrgDomain.trim())
+    const orgName = newOrgDomain.trim()
+    console.log('Looking for organization:', orgName)
     
     try {
-      // Find existing organization instead of creating new one
-      const response = await fetch('/api/organizations')
-      const organizations = await response.json()
-      const existingOrg = organizations.find((org: Organization) => 
-        org.domain.toLowerCase() === newOrgDomain.trim().toLowerCase()
-      )
+      // Find existing organization by name
+      const response = await fetch(`/api/organizations?name=${encodeURIComponent(orgName)}`)
       
-      if (existingOrg) {
-        console.log('Found existing organization:', existingOrg)
-        setCurrentOrganization(existingOrg)
-        
-        // Load users for this organization
-        const orgUsers = await fetchUsersByOrganization(existingOrg.id)
-        console.log('Users loaded:', orgUsers)
-        setAllUsers(orgUsers)
-        
-        setNewOrgDomain('')
-      } else {
-        // Create new organization if it doesn't exist
-        const newOrg = await createOrganization('Gradient', newOrgDomain.trim())
-        console.log('Organization created:', newOrg)
-        setCurrentOrganization(newOrg)
-        
-        // Load users for this organization
-        const orgUsers = await fetchUsersByOrganization(newOrg.id)
-        console.log('Users loaded:', orgUsers)
-        setAllUsers(orgUsers)
-        
-        setNewOrgDomain('')
+      if (!response.ok) {
+        alert(`Organization "${orgName}" not found. Please check the name and try again.`)
+        return
       }
+      
+      const existingOrg = await response.json()
+      console.log('Found organization:', existingOrg)
+      setCurrentOrganization(existingOrg)
+      
+      // Load users for this organization
+      const orgUsers = await fetchUsersByOrganization(existingOrg.id)
+      console.log('Users loaded:', orgUsers)
+      setAllUsers(orgUsers)
+      
+      setNewOrgDomain('')
     } catch (error) {
-      console.error('Failed to handle organization:', error)
-      alert('Failed to handle organization: ' + (error instanceof Error ? error.message : 'Unknown error'))
+      console.error('Failed to find organization:', error)
+      alert('Organization not found. Please check the name and try again.')
     }
   }
 
@@ -542,15 +524,15 @@ export default function Home() {
     try {
       const newTodoData = {
         text: newTodo.trim(),
-        assignedTo: assignees,
-        assignedToUserId: '', // Will be set by API
-        createdBy: currentUser.name,
-        createdByUserId: currentUser.id,
-        organizationId: currentUser.organizationId,
-        dueDate: new Date().toISOString(),
+        assigned_to: assignees,
+        assigned_to_user_id: '', // Will be set by API
+        created_by: currentUser.name,
+        created_by_user_id: currentUser.id,
+        organization_id: currentUser.organization_id,
+        due_date: new Date().toISOString(),
         completed: false,
-        completedBy: '',
-        attachedLinks: attachedLinks
+        completed_by: '',
+        attached_links: attachedLinks
       }
 
       const createdTodo = await createTodo(newTodoData)
@@ -605,8 +587,8 @@ export default function Home() {
       }
     } else {
       // Handle individual user completion
-      const assignees = todo.assignedTo.split(', ').map(name => name.trim())
-      const completedBy = todo.completedBy ? todo.completedBy.split(', ').map(name => name.trim()) : []
+      const assignees = todo.assigned_to.split(', ').map(name => name.trim())
+      const completedBy = todo.completed_by ? todo.completed_by.split(', ').map(name => name.trim()) : []
       
       // Check if current user has already completed their part
       if (completedBy.includes(currentUser.name)) {
@@ -727,7 +709,7 @@ export default function Home() {
         const matchedUser = allUsers.find(user => 
           user.name.toLowerCase() === typedName.toLowerCase() && 
           user.id !== currentUser?.id &&
-          user.organizationId === currentUser?.organizationId
+          user.organization_id === currentUser?.organization_id
         )
         console.log('Matched user:', matchedUser)
         if (matchedUser) {
@@ -800,7 +782,7 @@ export default function Home() {
       const filtered = allUsers.filter(user => 
         user.name.toLowerCase().startsWith(query.toLowerCase()) && 
         user.id !== currentUser?.id && // Don't suggest current user
-        user.organizationId === currentUser?.organizationId // Only show users from same organization
+        user.organization_id === currentUser?.organization_id // Only show users from same organization
       )
       console.log('@ detected, query:', query, 'allUsers:', allUsers.length, 'filtered:', filtered.length)
       setFilteredUsers(filtered)
@@ -915,7 +897,7 @@ export default function Home() {
                 onChange={(e) => setNewOrgDomain(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && newOrgDomain.trim()) {
-                    handleCreateOrganization()
+                    handleSelectOrganization()
                   }
                 }}
                 className="border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-0 focus:ring-offset-0 flex-1 bg-transparent px-0 outline-none"
@@ -925,8 +907,8 @@ export default function Home() {
             
             <Button 
               onClick={() => {
-                console.log('Button clicked, domain:', newOrgDomain.trim())
-                handleCreateOrganization()
+                console.log('Button clicked, org name:', newOrgDomain.trim())
+                handleSelectOrganization()
               }}
               disabled={!newOrgDomain.trim()}
               className="w-full cursor-pointer"
@@ -950,17 +932,17 @@ export default function Home() {
 
   // Filter todos for current user and sort them
   const userTodos = todos
-    .filter(todo => {
-      // Check if current user is assigned to this todo (supports multiple assignees)
-      const assignees = todo.assignedTo.split(', ').map(name => name.trim())
-      return assignees.includes(currentUser.name) && todo.organizationId === currentUser.organizationId
-    })
+.filter(todo => {
+  // Check if current user is assigned to this todo (supports multiple assignees)
+  const assignees = todo.assigned_to.split(', ').map(name => name.trim())
+                return assignees.includes(currentUser.name) && todo.organization_id === currentUser.organization_id
+})
     .sort((a, b) => {
       // Completed todos go to bottom
       if (a.completed && !b.completed) return 1
       if (!a.completed && b.completed) return -1
       // Within same completion status, newest first (by creation time)
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     })
 
   return (
@@ -1246,25 +1228,25 @@ function TodoItem({ todo, currentUser, onCompleteOrDelete, onMoveToTop, isShakin
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <User className="h-3 w-3" />
             <span>
-              {todo.assignedTo.split(', ').map((name, index) => {
-                const isCompleted = todo.completedBy ? todo.completedBy.split(', ').includes(name.trim()) : false
+              {todo.assigned_to.split(', ').map((name, index) => {
+                const isCompleted = todo.completed_by ? todo.completed_by.split(', ').includes(name.trim()) : false
                 return (
                   <span key={index}>
                     <span className={isCompleted ? 'line-through text-muted-foreground' : 'text-white'}>{name.trim()}</span>
-                    {index < todo.assignedTo.split(', ').length - 1 && ', '}
+                    {index < todo.assigned_to.split(', ').length - 1 && ', '}
                   </span>
                 )
               })}
             </span>
             <span className="text-muted-foreground/60">•</span>
-            <span className="text-muted-foreground/60">Assigned by {todo.createdBy}</span>
+            <span className="text-muted-foreground/60">Assigned by {todo.created_by}</span>
             
             {/* Link badges - inline with assignee info */}
-            {todo.attachedLinks && todo.attachedLinks.length > 0 && (
+            {todo.attached_links && todo.attached_links.length > 0 && (
               <>
                 <span className="text-muted-foreground/60">•</span>
                 <div className="flex items-center gap-1">
-                  {todo.attachedLinks.map((url, index) => (
+                  {todo.attached_links.map((url, index) => (
                     <Badge 
                       key={index} 
                       variant="secondary" 
@@ -1290,7 +1272,7 @@ function TodoItem({ todo, currentUser, onCompleteOrDelete, onMoveToTop, isShakin
         >
           {(() => {
             if (todo.completed) return 'Delete'
-            const completedBy = todo.completedBy ? todo.completedBy.split(', ').map(name => name.trim()) : []
+            const completedBy = todo.completed_by ? todo.completed_by.split(', ').map(name => name.trim()) : []
             const isCurrentUserCompleted = completedBy.includes(currentUser.name)
             return isCurrentUserCompleted ? 'Undo' : 'Complete'
           })()}
