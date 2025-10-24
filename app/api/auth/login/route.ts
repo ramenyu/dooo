@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { findUserByNameAndOrganization } from '@/lib/supabase-db'
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic'
+
 export async function POST(request: NextRequest) {
   try {
     const { name, password, organizationId } = await request.json()

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createUser, findUserByNameAndOrganization, getUsersByOrganization } from '@/lib/supabase-db'
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     const organizationId = request.nextUrl.searchParams.get('organizationId')
