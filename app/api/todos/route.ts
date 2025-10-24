@@ -3,9 +3,8 @@ import { getTodosByUserId, createTodo, updateTodo, deleteTodo } from '@/lib/supa
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId')
-    const organizationId = searchParams.get('organizationId')
+    const userId = request.nextUrl.searchParams.get('userId')
+    const organizationId = request.nextUrl.searchParams.get('organizationId')
     
     if (!userId || !organizationId) {
       return NextResponse.json({ error: 'userId and organizationId are required' }, { status: 400 })
@@ -65,8 +64,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const id = searchParams.get('id')
+    const id = request.nextUrl.searchParams.get('id')
     
     if (!id) {
       return NextResponse.json({ error: 'Todo ID is required' }, { status: 400 })

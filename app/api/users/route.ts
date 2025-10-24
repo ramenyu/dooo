@@ -3,8 +3,7 @@ import { createUser, findUserByNameAndOrganization, getUsersByOrganization } fro
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const organizationId = searchParams.get('organizationId')
+    const organizationId = request.nextUrl.searchParams.get('organizationId')
     
     if (!organizationId) {
       return NextResponse.json({ error: 'organizationId is required' }, { status: 400 })

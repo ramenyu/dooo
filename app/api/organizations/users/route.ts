@@ -3,8 +3,7 @@ import { getUsersByOrganization } from '@/lib/supabase-db'
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const organizationId = searchParams.get('organizationId')
+    const organizationId = request.nextUrl.searchParams.get('organizationId')
     
     if (!organizationId) {
       return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 })
