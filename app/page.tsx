@@ -1096,12 +1096,40 @@ export default function Home() {
       return false
     })
     .sort((a, b) => {
-      // When both filters are on, completed todos go to bottom
-      if (showPending && showCompleted) {
-        if (a.completed && !b.completed) return 1
-        if (!a.completed && b.completed) return -1
-      }
-      // Within same completion status, newest first (by creation time)
+      // Priority groups:
+      // 1. Not yet completed by current user (and not fully completed)
+      // 2. Waiting for other users to complete (current user completed but not all)
+      // 3. Fully completed tasks
+      
+      const aAssignees = a.assigned_to.split(', ').map(name => name.trim())
+      const bAssignees = b.assigned_to.split(', ').map(name => name.trim())
+      const aCompletedBy = a.completed_by ? a.completed_by.split(', ').map(name => name.trim()) : []
+      const bCompletedBy = b.completed_by ? b.completed_by.split(', ').map(name => name.trim()) : []
+      
+      const aCurrentUserCompleted = aCompletedBy.includes(currentUser.name)
+      const bCurrentUserCompleted = bCompletedBy.includes(currentUser.name)
+      
+      // Group 1: Not completed by current user
+      const aGroup1 = !a.completed && !aCurrentUserCompleted
+      const bGroup1 = !b.completed && !bCurrentUserCompleted
+      
+      // Group 2: Current user completed, waiting for others
+      const aGroup2 = !a.completed && aCurrentUserCompleted
+      const bGroup2 = !b.completed && bCurrentUserCompleted
+      
+      // Group 3: Fully completed
+      const aGroup3 = a.completed
+      const bGroup3 = b.completed
+      
+      // Sort by groups
+      if (aGroup1 && !bGroup1) return -1
+      if (!aGroup1 && bGroup1) return 1
+      if (aGroup2 && !bGroup2) return -1
+      if (!aGroup2 && bGroup2) return 1
+      if (aGroup3 && !bGroup3) return 1
+      if (!aGroup3 && bGroup3) return -1
+      
+      // Within same group, newest first (by creation time)
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     })
   
