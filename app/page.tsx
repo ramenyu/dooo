@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Kbd, KbdGroup } from '@/components/ui/kbd'
+import { Switch } from '@/components/ui/switch'
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -159,8 +160,10 @@ export default function Home() {
   const [newOrgDomain, setNewOrgDomain] = useState('')
   const [showPending, setShowPending] = useState(true)
   const [showCompleted, setShowCompleted] = useState(false)
+  const [showAssignedByMe, setShowAssignedByMe] = useState(false)
   const [showAlert, setShowAlert] = useState(false)
   const [alertMessage, setAlertMessage] = useState('')
+  const [alertTodoId, setAlertTodoId] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   // Keyboard shortcut handler - must be at top level
@@ -303,11 +306,18 @@ export default function Home() {
         if (selectedTodo) {
           // Check if current user is the creator
           if (selectedTodo.created_by !== currentUser?.name) {
-            // Show alert if not the creator
+            // Show alert with shake animation
             setAlertMessage('Only the creator can discard this item')
+            setAlertTodoId(selectedTodo.id)
             setShowAlert(true)
-            // Auto-hide alert after 3 seconds
-            setTimeout(() => setShowAlert(false), 3000)
+            
+            // Shake the item
+            setShakingTodos(new Set([selectedTodo.id]))
+            setTimeout(() => {
+              setShakingTodos(new Set())
+              setShowAlert(false)
+              setAlertTodoId(null)
+            }, 3000)
             return
           }
           
@@ -1066,10 +1076,16 @@ export default function Home() {
   // Filter todos for current user and apply pending/completed filters
   const userTodos = todos
     .filter(todo => {
-      // Check if current user is assigned to this todo (supports multiple assignees)
-      const assignees = todo.assigned_to.split(', ').map(name => name.trim())
-      if (!assignees.includes(currentUser.name) || todo.organization_id !== currentUser.organization_id) {
-        return false
+      // Filter by organization
+      if (todo.organization_id !== currentUser.organization_id) return false
+      
+      // Filter by "Assigned by me"
+      if (showAssignedByMe) {
+        if (todo.created_by !== currentUser.name) return false
+      } else {
+        // Normal filter: show items assigned to me
+        const assignees = todo.assigned_to.split(', ').map(name => name.trim())
+        if (!assignees.includes(currentUser.name)) return false
       }
       
       // Apply pending/completed filters
@@ -1115,23 +1131,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background animate-in fade-in duration-500">
-      {/* Alert for permission errors */}
-      {showAlert && (
-        <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm"
-          onClick={() => setShowAlert(false)}
-        >
-          <div 
-            className="bg-muted rounded-lg border px-4 py-3 flex items-center gap-3"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <CheckCircle2Icon className="h-4 w-4 shrink-0" />
-            <div className="text-xs">
-              {alertMessage}
-            </div>
-          </div>
-        </div>
-      )}
       
       {/* Header */}
       <div className="p-4">
@@ -1170,31 +1169,43 @@ export default function Home() {
       </div>
 
       {/* Todo List */}
-      <div className="flex-1 flex flex-col items-center px-4 pb-0 overflow-hidden">
-        <div className="container mx-auto max-w-4xl">
+      <div className="flex-1 flex flex-col items-center pb-0">
+        <div className="container mx-auto max-w-4xl px-4">
           {/* Filter Badges and Navigation Instruction */}
           <div className="mb-4 flex justify-between items-center">
-            <div className="flex gap-2">
-              <Badge 
-                variant="secondary" 
-                className={`text-xs font-normal cursor-pointer transition-all min-w-[80px] ${
-                  showPending ? 'opacity-100' : 'opacity-40 hover:opacity-60'
-                }`}
-                onClick={() => setShowPending(!showPending)}
-              >
-                <span className={showPending ? 'font-medium' : ''}>{pendingCount}</span>
-                <span className={`ml-1 ${showPending ? 'text-muted-foreground' : ''}`}>pending</span>
-              </Badge>
-              <Badge 
-                variant="secondary" 
-                className={`text-xs font-normal cursor-pointer transition-all min-w-[80px] ${
-                  showCompleted ? 'opacity-100' : 'opacity-40 hover:opacity-60'
-                }`}
-                onClick={() => setShowCompleted(!showCompleted)}
-              >
-                <span className={showCompleted ? 'font-medium' : ''}>{completedCount}</span>
-                <span className={`ml-1 ${showCompleted ? 'text-muted-foreground' : ''}`}>completed</span>
-              </Badge>
+            <div className="flex items-center gap-4 ml-3">
+              <div className="flex gap-2">
+                <Badge 
+                  variant="secondary" 
+                  className={`text-xs font-normal cursor-pointer transition-all min-w-[80px] ${
+                    showPending ? 'opacity-100' : 'opacity-40 hover:opacity-60'
+                  }`}
+                  onClick={() => setShowPending(!showPending)}
+                >
+                  <span className={showPending ? 'font-medium' : ''}>{pendingCount}</span>
+                  <span className={`ml-1 ${showPending ? 'text-muted-foreground' : ''}`}>pending</span>
+                </Badge>
+                <Badge 
+                  variant="secondary" 
+                  className={`text-xs font-normal cursor-pointer transition-all min-w-[80px] ${
+                    showCompleted ? 'opacity-100' : 'opacity-40 hover:opacity-60'
+                  }`}
+                  onClick={() => setShowCompleted(!showCompleted)}
+                >
+                  <span className={showCompleted ? 'font-medium' : ''}>{completedCount}</span>
+                  <span className={`ml-1 ${showCompleted ? 'text-muted-foreground' : ''}`}>completed</span>
+                </Badge>
+              </div>
+              
+              {/* "Mine" toggle */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Mine</span>
+                <Switch
+                  checked={showAssignedByMe}
+                  onCheckedChange={setShowAssignedByMe}
+                  className="scale-75"
+                />
+              </div>
             </div>
             
             {/* Navigation keyboard shortcut instruction */}
@@ -1210,8 +1221,8 @@ export default function Home() {
           </div>
           
           {/* Scrollable todo list */}
-          <div className="max-h-[calc(100vh-22rem)] overflow-y-auto pr-2 custom-scrollbar">
-            <div className="space-y-3">
+          <div className="max-h-[calc(100vh-22rem)] overflow-y-auto custom-scrollbar">
+            <div className="space-y-3 px-2">
             {userTodos.length === 0 ? (
               <Card className="border border-border bg-card">
                 <CardContent className="p-8 text-center">
@@ -1235,6 +1246,7 @@ export default function Home() {
                       setSelectedTodoIndex(todoIndex)
                     }
                   }}
+                  alertMessage={showAlert && alertTodoId === todo.id ? alertMessage : undefined}
                 />
               ))
             )}
@@ -1390,7 +1402,7 @@ export default function Home() {
   )
 }
 
-function TodoItem({ todo, currentUser, onCompleteOrDelete, onMoveToTop, isShaking, isSelected, onSelect }: {
+function TodoItem({ todo, currentUser, onCompleteOrDelete, onMoveToTop, isShaking, isSelected, onSelect, alertMessage }: {
   todo: Todo
   currentUser: User
   onCompleteOrDelete: (id: string) => void
@@ -1398,16 +1410,19 @@ function TodoItem({ todo, currentUser, onCompleteOrDelete, onMoveToTop, isShakin
   isShaking: boolean
   isSelected: boolean
   onSelect: (todoId: string) => void
+  alertMessage?: string
 }) {
   const [isHovered, setIsHovered] = useState(false)
 
   return (
-    <div 
-      className="relative group cursor-pointer"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      onClick={() => onSelect(todo.id)}
-    >
+    <div className="flex items-center gap-3">
+      <div 
+        className={`group cursor-pointer flex-1 relative ${isShaking ? 'z-[9999]' : ''}`}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        onClick={() => onSelect(todo.id)}
+      >
+      {isShaking && <div className="absolute top-0 bottom-0 bg-background -z-10" style={{ left: '-100vw', right: '-100vw' }} />}
       
       {/* Up button - appears on hover (only for incomplete tasks) */}
       {isHovered && !todo.completed && (
@@ -1424,7 +1439,7 @@ function TodoItem({ todo, currentUser, onCompleteOrDelete, onMoveToTop, isShakin
       <Item 
         variant="outline" 
         size="sm" 
-        className={`transition-all duration-200 ${todo.completed ? 'opacity-60' : ''} ${isShaking ? 'shake' : ''} ${isSelected ? 'bg-primary/10 border-primary shadow-md' : isHovered ? 'bg-muted shadow-md border-border/80' : 'bg-muted/50'} gap-2`}
+        className={`transition-all duration-200 ${todo.completed ? 'opacity-60' : ''} ${isShaking ? 'shake relative z-50' : ''} ${isSelected ? 'bg-primary/10 border-primary shadow-md' : isHovered ? 'bg-muted shadow-md border-border/80' : 'bg-muted/50'} gap-2`}
       >
       <ItemContent>
         <ItemTitle className={`text-sm font-normal ${todo.completed ? 'line-through text-muted-foreground' : ''}`}>
@@ -1485,6 +1500,7 @@ function TodoItem({ todo, currentUser, onCompleteOrDelete, onMoveToTop, isShakin
         </Button>
       </ItemActions>
       </Item>
+      </div>
     </div>
   )
 }
