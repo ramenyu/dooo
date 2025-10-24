@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Kbd, KbdGroup } from '@/components/ui/kbd'
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   Item,
   ItemActions,
@@ -27,7 +29,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { InfoIcon } from 'lucide-react'
-import { Plus, Calendar, User, CheckCircle, Circle, AtSign, ArrowUpRight, LogOut, X, ArrowUp, Paperclip } from 'lucide-react'
+import { Plus, Calendar, User, CheckCircle, Circle, AtSign, ArrowUpRight, LogOut, X, ArrowUp, Paperclip, AlertCircle as AlertCircleIcon, CheckCircle2 as CheckCircle2Icon } from 'lucide-react'
 import { format } from 'date-fns'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -58,6 +60,14 @@ export interface User {
   password?: string
   organization_id: string
   created_at?: string
+}
+
+// Helper function to capitalize first letter of each word
+const capitalizeWords = (str: string): string => {
+  return str
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ')
 }
 
 // API functions
@@ -129,6 +139,7 @@ async function registerUser(name: string, password: string, organizationId: stri
 }
 
 export default function Home() {
+  const [isLoading, setIsLoading] = useState(true)
   const [todos, setTodos] = useState<Todo[]>([])
   const [newTodo, setNewTodo] = useState('')
   const [currentUser, setCurrentUser] = useState<User | null>(null)
@@ -146,6 +157,10 @@ export default function Home() {
   const [shakingTodos, setShakingTodos] = useState<Set<string>>(new Set())
   const [selectedTodoIndex, setSelectedTodoIndex] = useState<number>(-1)
   const [newOrgDomain, setNewOrgDomain] = useState('')
+  const [showPending, setShowPending] = useState(true)
+  const [showCompleted, setShowCompleted] = useState(false)
+  const [showAlert, setShowAlert] = useState(false)
+  const [alertMessage, setAlertMessage] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
   // Keyboard shortcut handler - must be at top level
@@ -286,7 +301,17 @@ export default function Home() {
         
         const selectedTodo = sortedTodos[selectedTodoIndex]
         if (selectedTodo) {
-          // Delete/discard the todo completely
+          // Check if current user is the creator
+          if (selectedTodo.created_by !== currentUser?.name) {
+            // Show alert if not the creator
+            setAlertMessage('Only the creator can discard this item')
+            setShowAlert(true)
+            // Auto-hide alert after 3 seconds
+            setTimeout(() => setShowAlert(false), 3000)
+            return
+          }
+          
+          // Delete/discard the todo completely (only if creator)
           fetch(`/api/todos?id=${selectedTodo.id}`, { method: 'DELETE' })
             .then(() => {
               setTodos(prev => prev.filter(t => t.id !== selectedTodo.id))
@@ -359,12 +384,64 @@ export default function Home() {
     }
   }
 
-  // Load todos from API when user changes
+  // Load from localStorage after initial mount (client-side only)
+  useEffect(() => {
+    // Load data immediately
+    const savedUser = localStorage.getItem('currentUser')
+    const savedOrg = localStorage.getItem('currentOrganization')
+    
+    // Ensure names are capitalized when loading from localStorage
+    if (savedUser) {
+      const user = JSON.parse(savedUser)
+      setCurrentUser({ ...user, name: capitalizeWords(user.name) })
+    }
+    if (savedOrg) {
+      const org = JSON.parse(savedOrg)
+      setCurrentOrganization({ ...org, name: capitalizeWords(org.name) })
+    }
+    
+    // Keep loading state for 200ms to show skeleton animation (quick but smooth)
+    const timer = setTimeout(() => {
+      setIsLoading(false)
+    }, 200)
+
+    return () => clearTimeout(timer)
+  }, [])
+
+  // Persist currentUser to localStorage
   useEffect(() => {
     if (currentUser) {
-      fetchTodos(currentUser.name, currentUser.organization_id).then(setTodos).catch(console.error)
+      localStorage.setItem('currentUser', JSON.stringify(currentUser))
+    } else {
+      localStorage.removeItem('currentUser')
+    }
+  }, [currentUser])
+
+  // Persist currentOrganization to localStorage
+  useEffect(() => {
+    if (currentOrganization) {
+      localStorage.setItem('currentOrganization', JSON.stringify(currentOrganization))
+    } else {
+      localStorage.removeItem('currentOrganization')
+    }
+  }, [currentOrganization])
+
+  // Load todos from API when user changes
+  useEffect(() => {
+    if (currentUser && currentUser.name && currentUser.organization_id) {
+      console.log('Loading todos for user:', currentUser.name, 'org:', currentUser.organization_id)
+      fetchTodos(currentUser.name, currentUser.organization_id)
+        .then(todos => {
+          console.log('Loaded todos:', todos.length)
+          setTodos(todos)
+        })
+        .catch(err => {
+          console.error('Failed to load todos:', err)
+        })
       // Request notification permission when user logs in
       requestNotificationPermission()
+    } else if (currentUser) {
+      console.warn('User loaded but missing name or org:', currentUser)
     }
   }, [currentUser])
 
@@ -431,7 +508,8 @@ export default function Home() {
         
         // Also refresh the user list to pick up new registrations
         const orgUsers = await fetchUsersByOrganization(currentOrganization.id)
-        setAllUsers(orgUsers)
+        const capitalizedOrgUsers = orgUsers.map(u => ({ ...u, name: capitalizeWords(u.name) }))
+        setAllUsers(capitalizedOrgUsers)
       } catch (error) {
         console.error('Failed to fetch updated todos:', error)
       }
@@ -475,22 +553,26 @@ export default function Home() {
     console.log('Looking for organization:', orgName)
     
     try {
-      // Find existing organization by name
+      // Find existing organization by name (case-insensitive)
       const response = await fetch(`/api/organizations?name=${encodeURIComponent(orgName)}`)
       
       if (!response.ok) {
-        alert(`Organization "${orgName}" not found. Please check the name and try again.`)
+        alert(`Organization "${capitalizeWords(orgName)}" not found. Please check the name and try again.`)
         return
       }
       
       const existingOrg = await response.json()
-      console.log('Found organization:', existingOrg)
-      setCurrentOrganization(existingOrg)
+      // Ensure org name is capitalized for display
+      const displayOrg = { ...existingOrg, name: capitalizeWords(existingOrg.name) }
+      console.log('Found organization:', displayOrg)
+      setCurrentOrganization(displayOrg)
       
       // Load users for this organization
       const orgUsers = await fetchUsersByOrganization(existingOrg.id)
-      console.log('Users loaded:', orgUsers)
-      setAllUsers(orgUsers)
+      // Ensure all user names are capitalized for display
+      const capitalizedOrgUsers = orgUsers.map(u => ({ ...u, name: capitalizeWords(u.name) }))
+      console.log('Users loaded:', capitalizedOrgUsers)
+      setAllUsers(capitalizedOrgUsers)
       
       setNewOrgDomain('')
     } catch (error) {
@@ -852,11 +934,13 @@ export default function Home() {
     
     try {
       const user = await loginUser(name, password, currentOrganization.id)
-      setCurrentUser({ ...user, organization_id: currentOrganization.id })
+      // Capitalize the user name for display
+      const displayUser = { ...user, name: capitalizeWords(user.name), organization_id: currentOrganization.id }
+      setCurrentUser(displayUser)
       
       // Add user to local users list for @ mentions
       if (!users.find(u => u.id === user.id)) {
-        setUsers(prev => [...prev, { ...user, organization_id: currentOrganization.id }])
+        setUsers(prev => [...prev, displayUser])
       }
     } catch (error) {
       alert('Invalid credentials')
@@ -867,16 +951,65 @@ export default function Home() {
     if (!currentOrganization) return
     
     try {
-      const newUser = await registerUser(name, password, currentOrganization.id)
-      setCurrentUser({ ...newUser, organization_id: currentOrganization.id })
-      setUsers(prev => [...prev, { ...newUser, organization_id: currentOrganization.id }])
+      // Capitalize the user name for display
+      const capitalizedName = capitalizeWords(name)
+      const newUser = await registerUser(capitalizedName, password, currentOrganization.id)
+      const displayUser = { ...newUser, name: capitalizedName, organization_id: currentOrganization.id }
+      setCurrentUser(displayUser)
+      setUsers(prev => [...prev, displayUser])
       
       // Refresh the allUsers list to include the new user for @ mentions
       const orgUsers = await fetchUsersByOrganization(currentOrganization.id)
-      setAllUsers(orgUsers)
+      // Ensure all user names are capitalized
+      const capitalizedOrgUsers = orgUsers.map(u => ({ ...u, name: capitalizeWords(u.name) }))
+      setAllUsers(capitalizedOrgUsers)
     } catch (error) {
       alert('Failed to register user')
     }
+  }
+
+  // Show loading state during initial mount
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col animate-in fade-in duration-300">
+        {/* Header skeleton */}
+        <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b border-border">
+          <div className="container mx-auto max-w-4xl px-4 py-4">
+            <div className="flex items-center justify-between mb-2">
+              <Skeleton className="h-6 w-24" />
+              <Skeleton className="h-8 w-8 rounded-full" />
+            </div>
+            <Skeleton className="h-4 w-48 mx-auto" />
+          </div>
+        </div>
+
+        {/* Content area */}
+        <div className="flex-1 flex flex-col items-center px-4 pb-0 overflow-hidden mt-6">
+          <div className="container mx-auto max-w-4xl w-full">
+            {/* Pending counter */}
+            <div className="mb-4 flex justify-between items-center">
+              <Skeleton className="h-6 w-20" />
+              <Skeleton className="h-6 w-32" />
+            </div>
+            
+            {/* Todo items skeleton */}
+            <div className="space-y-3">
+              <Skeleton className="h-24 w-full rounded-lg" />
+              <Skeleton className="h-24 w-full rounded-lg" />
+              <Skeleton className="h-24 w-full rounded-lg" />
+            </div>
+          </div>
+        </div>
+
+        {/* Input bar skeleton */}
+        <div className="sticky bottom-0 w-full bg-background/80 backdrop-blur-sm border-t border-border py-4">
+          <div className="container mx-auto max-w-4xl px-4">
+            <Skeleton className="h-6 w-24 ml-auto mb-2" />
+            <Skeleton className="h-12 w-full rounded-lg" />
+          </div>
+        </div>
+      </div>
+    )
   }
 
   // Organization selection step
@@ -930,23 +1063,76 @@ export default function Home() {
     )
   }
 
-  // Filter todos for current user and sort them
+  // Filter todos for current user and apply pending/completed filters
   const userTodos = todos
-.filter(todo => {
-  // Check if current user is assigned to this todo (supports multiple assignees)
-  const assignees = todo.assigned_to.split(', ').map(name => name.trim())
-                return assignees.includes(currentUser.name) && todo.organization_id === currentUser.organization_id
-})
+    .filter(todo => {
+      // Check if current user is assigned to this todo (supports multiple assignees)
+      const assignees = todo.assigned_to.split(', ').map(name => name.trim())
+      if (!assignees.includes(currentUser.name) || todo.organization_id !== currentUser.organization_id) {
+        return false
+      }
+      
+      // Apply pending/completed filters
+      if (!showPending && !showCompleted) return false // Hide all if both filters off
+      if (showPending && showCompleted) return true // Show all if both filters on
+      if (showPending && !todo.completed) return true // Show only pending
+      if (showCompleted && todo.completed) return true // Show only completed
+      return false
+    })
     .sort((a, b) => {
-      // Completed todos go to bottom
-      if (a.completed && !b.completed) return 1
-      if (!a.completed && b.completed) return -1
+      // When both filters are on, completed todos go to bottom
+      if (showPending && showCompleted) {
+        if (a.completed && !b.completed) return 1
+        if (!a.completed && b.completed) return -1
+      }
       // Within same completion status, newest first (by creation time)
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     })
+  
+  // Calculate counts
+  const pendingCount = todos.filter(todo => {
+    const assignees = todo.assigned_to.split(', ').map(name => name.trim())
+    return assignees.includes(currentUser.name) && 
+           todo.organization_id === currentUser.organization_id && 
+           !todo.completed
+  }).length
+  
+  const completedCount = todos.filter(todo => {
+    const assignees = todo.assigned_to.split(', ').map(name => name.trim())
+    return assignees.includes(currentUser.name) && 
+           todo.organization_id === currentUser.organization_id && 
+           todo.completed
+  }).length
+
+  // Show loading state briefly to prevent flash
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-muted-foreground">Loading...</div>
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background animate-in fade-in duration-500">
+      {/* Alert for permission errors */}
+      {showAlert && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm"
+          onClick={() => setShowAlert(false)}
+        >
+          <div 
+            className="bg-muted rounded-lg border px-4 py-3 flex items-center gap-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <CheckCircle2Icon className="h-4 w-4 shrink-0" />
+            <div className="text-xs">
+              {alertMessage}
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Header */}
       <div className="p-4">
         <div className="container mx-auto max-w-4xl">
@@ -969,6 +1155,7 @@ export default function Home() {
                 setShowMentionHint(false)
                 setShakingTodos(new Set())
                 localStorage.removeItem('currentUser')
+                localStorage.removeItem('currentOrganization')
               }}
               className="rounded-full"
               aria-label="Logout"
@@ -985,11 +1172,30 @@ export default function Home() {
       {/* Todo List */}
       <div className="flex-1 flex flex-col items-center px-4 pb-0 overflow-hidden">
         <div className="container mx-auto max-w-4xl">
-          {/* Pending Counter and Navigation Instruction */}
+          {/* Filter Badges and Navigation Instruction */}
           <div className="mb-4 flex justify-between items-center">
-            <Badge variant="secondary" className="text-xs font-normal">
-              {userTodos.filter(t => !t.completed).length} pending
-            </Badge>
+            <div className="flex gap-2">
+              <Badge 
+                variant="secondary" 
+                className={`text-xs font-normal cursor-pointer transition-all min-w-[80px] ${
+                  showPending ? 'opacity-100' : 'opacity-40 hover:opacity-60'
+                }`}
+                onClick={() => setShowPending(!showPending)}
+              >
+                <span className={showPending ? 'font-medium' : ''}>{pendingCount}</span>
+                <span className={`ml-1 ${showPending ? 'text-muted-foreground' : ''}`}>pending</span>
+              </Badge>
+              <Badge 
+                variant="secondary" 
+                className={`text-xs font-normal cursor-pointer transition-all min-w-[80px] ${
+                  showCompleted ? 'opacity-100' : 'opacity-40 hover:opacity-60'
+                }`}
+                onClick={() => setShowCompleted(!showCompleted)}
+              >
+                <span className={showCompleted ? 'font-medium' : ''}>{completedCount}</span>
+                <span className={`ml-1 ${showCompleted ? 'text-muted-foreground' : ''}`}>completed</span>
+              </Badge>
+            </div>
             
             {/* Navigation keyboard shortcut instruction */}
             <p className="text-muted-foreground text-xs transform -translate-x-3.5 translate-y-1">
@@ -1009,7 +1215,7 @@ export default function Home() {
             {userTodos.length === 0 ? (
               <Card className="border border-border bg-card">
                 <CardContent className="p-8 text-center">
-                  <p className="text-muted-foreground">No todos yet. Add one below!</p>
+                  <p className="text-muted-foreground text-sm">No to-dos yet. Add one below!</p>
                 </CardContent>
               </Card>
             ) : (
@@ -1232,14 +1438,14 @@ function TodoItem({ todo, currentUser, onCompleteOrDelete, onMoveToTop, isShakin
                 const isCompleted = todo.completed_by ? todo.completed_by.split(', ').includes(name.trim()) : false
                 return (
                   <span key={index}>
-                    <span className={isCompleted ? 'line-through text-muted-foreground' : 'text-white'}>{name.trim()}</span>
+                    <span className={isCompleted ? 'line-through text-muted-foreground' : 'text-white'}>{capitalizeWords(name.trim())}</span>
                     {index < todo.assigned_to.split(', ').length - 1 && ', '}
                   </span>
                 )
               })}
             </span>
             <span className="text-muted-foreground/60">•</span>
-            <span className="text-muted-foreground/60">Assigned by {todo.created_by}</span>
+            <span className="text-muted-foreground/60">Assigned by {capitalizeWords(todo.created_by)}</span>
             
             {/* Link badges - inline with assignee info */}
             {todo.attached_links && todo.attached_links.length > 0 && (

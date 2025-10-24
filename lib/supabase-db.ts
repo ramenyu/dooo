@@ -54,7 +54,7 @@ export async function findOrganizationByName(name: string) {
   const { data, error} = await supabase
     .from('organizations')
     .select('*')
-    .eq('name', name)
+    .ilike('name', name) // Case-insensitive matching
     .single()
   
   if (error && error.code !== 'PGRST116') throw error
