@@ -1,155 +1,130 @@
-# Todo App with shadcn/ui
+# dooo - Awesome Todo App for Teams
 
-A beautiful todo application built following the [official shadcn/ui Next.js installation guide](https://ui.shadcn.com/docs/installation/next).
+A beautiful todo application built with Next.js, shadcn/ui, and Supabase for real-time collaboration.
 
 ## Features
 
-- ✅ **Beautiful UI** - Built with shadcn/ui components following official patterns
+- ✅ **Beautiful UI** - Built with shadcn/ui components
 - 📝 **Add todos** - Type and press Enter to add todos
 - 👤 **User assignment** - Use @name to assign todos to team members
 - 📅 **Date tracking** - Todos are assigned today's date by default
-- 🔐 **Simple auth** - Name + 4-digit password system
+- 🔐 **Organization-based auth** - Join organizations and collaborate
 - 👥 **Team ready** - Easy to assign todos to other team members
-- 💾 **Persistent storage** - Uses localStorage to save data
+- 💾 **Real-time sync** - Uses Supabase for persistent storage
+- 🔗 **Link attachments** - Attach URLs to todos
+- ⌨️ **Keyboard shortcuts** - Cmd+K to focus input, Cmd+↑/↓ to navigate
+- 🔔 **Notifications** - Desktop notifications for new todos
 
 ## Installation
-
-This project follows the **exact** shadcn/ui setup process:
 
 ### Prerequisites
 - Node.js 18+ 
 - npm, yarn, pnpm, or bun
+- Supabase account
 
-### Setup (Following shadcn/ui docs)
+### Setup
 
-1. **Install dependencies:**
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/ramenyu/dooo.git
+   cd dooo
+   ```
+
+2. **Install dependencies:**
    ```bash
    npm install
    ```
 
-2. **Run the development server:**
+3. **Set up environment variables:**
+   ```bash
+   cp .env.local.example .env.local
+   # Add your Supabase credentials to .env.local
+   ```
+
+4. **Set up Supabase:**
+   - Create a new Supabase project
+   - Run the SQL schema from `supabase-schema.sql`
+   - Add your Supabase URL and anon key to `.env.local`
+
+5. **Run the development server:**
    ```bash
    npm run dev
    ```
 
-3. **Open your browser:**
+6. **Open your browser:**
    Navigate to [http://localhost:3000](http://localhost:3000)
-
-## shadcn/ui Components Used
-
-This project uses the **exact** components that would be created by running:
-
-```bash
-# These commands were manually implemented following shadcn/ui patterns
-npx shadcn@latest init
-npx shadcn@latest add button
-npx shadcn@latest add input  
-npx shadcn@latest add card
-```
-
-### Components Structure
-```
-components/
-└── ui/
-    ├── button.tsx    # Exact shadcn/ui Button component
-    ├── input.tsx     # Exact shadcn/ui Input component
-    └── card.tsx      # Exact shadcn/ui Card component
-```
-
-### Configuration Files
-- `components.json` - shadcn/ui configuration (exact schema)
-- `tailwind.config.ts` - Tailwind config with shadcn/ui theme
-- `lib/utils.ts` - cn() utility function (clsx + tailwind-merge)
-- `app/globals.css` - CSS variables for shadcn/ui theming
 
 ## Usage
 
 ### Getting Started
-1. **Register/Login** - Create an account with your name and a 4-digit password
+1. **Register/Login** - Create an account with your name and organization
 2. **Add todos** - Type your todo in the input field at the bottom
 3. **Assign to team members** - Use @name to assign todos (e.g., "@john Buy groceries")
-4. **Complete todos** - Click the circle icon to mark as complete
-5. **Delete todos** - Click the delete button to remove todos
+4. **Attach links** - Paste URLs to attach them to todos
+5. **Complete todos** - Click the circle icon or use Enter key
+6. **Delete todos** - Use Delete key to discard todos
+
+### Keyboard Shortcuts
+- **⌘K** - Focus the input field
+- **⌘↑/↓** - Navigate through todos
+- **Enter** - Complete selected todo
+- **Delete** - Discard selected todo
 
 ### Features Explained
 
 #### @ Mention System
 - Type `@name` to assign a todo to someone
-- Default assignment is to yourself (`@You`)
-- Example: `@john Review the project proposal`
+- Auto-completion shows organization members
+- Case-insensitive matching
 
-#### Date Assignment
-- All todos are assigned today's date by default
-- You can see when each todo was created
-- Todos show both creation date and due date
+#### Link Attachments
+- Paste URLs to automatically attach them
+- Click attached links to open in new tab
+- Remove attachments before submitting
 
-#### Team Management
-- Simple authentication with name + 4-digit password
-- Each user sees only their assigned todos
-- Easy to add new team members
+#### Organization Management
+- Join organizations with @organization format
+- All members see each other in @ mentions
+- Isolated data per organization
 
 ## Project Structure
 
 ```
-todo-app/
+dooo/
 ├── app/
+│   ├── api/                 # API routes
 │   ├── globals.css          # shadcn/ui CSS variables
 │   ├── layout.tsx           # Root layout component
 │   └── page.tsx             # Main todo app component
 ├── components/
-│   └── ui/                  # shadcn/ui components (exact implementations)
-│       ├── button.tsx
-│       ├── card.tsx
-│       └── input.tsx
+│   └── ui/                  # shadcn/ui components
 ├── lib/
-│   └── utils.ts             # cn() utility (clsx + tailwind-merge)
-├── components.json          # shadcn/ui configuration
-├── tailwind.config.ts       # Tailwind config with shadcn/ui theme
+│   ├── supabase.ts          # Supabase client
+│   ├── supabase-db.ts       # Database operations
+│   └── utils.ts             # Utility functions
+├── supabase-schema.sql      # Database schema
 └── package.json
 ```
 
-## Adding More shadcn/ui Components
-
-To add more components following the official process:
-
-```bash
-npx shadcn@latest add [component-name]
-```
-
-For example:
-```bash
-npx shadcn@latest add dialog
-npx shadcn@latest add dropdown-menu
-npx shadcn@latest add toast
-```
-
-## Development
-
-### Available Scripts
-
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run start` - Start production server
-- `npm run lint` - Run ESLint
-
 ## Deployment
-
-This app is ready for deployment to platforms like:
-- **Vercel** (recommended for Next.js)
-- **Netlify**
-- **Railway**
-- **Heroku**
 
 ### Vercel Deployment
 1. Push your code to GitHub
 2. Connect your repo to Vercel
-3. Deploy automatically
+3. Add environment variables in Vercel dashboard
+4. Deploy automatically
 
-## References
+### Environment Variables
+- `NEXT_PUBLIC_SUPABASE_URL` - Your Supabase project URL
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Your Supabase anon key
 
-- [shadcn/ui Next.js Installation](https://ui.shadcn.com/docs/installation/next)
-- [shadcn/ui Components](https://ui.shadcn.com/docs/components)
-- [shadcn/ui CLI](https://ui.shadcn.com/docs/cli)
+## Development
+
+### Available Scripts
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint
 
 ## License
 
