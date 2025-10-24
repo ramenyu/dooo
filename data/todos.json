@@ -491,5 +491,19 @@
     "completedBy": "",
     "attachedLinks": [],
     "createdAt": "2025-10-24T05:49:56.487Z"
+  },
+  {
+    "id": "9ca14378-394c-4949-9eab-dda3979e4754",
+    "text": "parallax readme update",
+    "assignedTo": "Rymon",
+    "assignedToUserId": "42fba789-ba6d-4b6b-8f7b-4712f45a4a03",
+    "createdBy": "Rymon",
+    "createdByUserId": "1ee19fa1-a8fc-4a24-99d5-667524d33ec8",
+    "organizationId": "57015e2b-0416-4a98-9bd2-7cac89b805fc",
+    "dueDate": "2025-10-24T05:55:09.278Z",
+    "completed": false,
+    "completedBy": "",
+    "attachedLinks": [],
+    "createdAt": "2025-10-24T05:55:09.290Z"
   }
 ]
