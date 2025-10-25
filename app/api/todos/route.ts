@@ -7,9 +7,21 @@ export const runtime = 'nodejs'
 
 export async function GET(request: NextRequest) {
   try {
+    const id = request.nextUrl.searchParams.get('id')
     const userName = request.nextUrl.searchParams.get('userName')
     const organizationId = request.nextUrl.searchParams.get('organizationId')
     
+    // If ID is provided, fetch single todo
+    if (id) {
+      const { getTodoById } = await import('@/lib/supabase-db')
+      const todo = await getTodoById(id)
+      if (!todo) {
+        return NextResponse.json({ error: 'Todo not found' }, { status: 404 })
+      }
+      return NextResponse.json(todo)
+    }
+    
+    // Otherwise fetch todos by user
     if (!userName || !organizationId) {
       return NextResponse.json({ error: 'userName and organizationId are required' }, { status: 400 })
     }

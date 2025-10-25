@@ -95,6 +95,17 @@ export async function getTodosByUserName(userName: string, organizationId: strin
   return data || []
 }
 
+export async function getTodoById(id: string) {
+  const { data, error } = await supabase
+    .from('todos')
+    .select('*')
+    .eq('id', id)
+    .single()
+  
+  if (error) throw error
+  return data
+}
+
 export async function updateTodo(id: string, updates: Database['public']['Tables']['todos']['Update']) {
   const { data, error } = await supabase
     .from('todos')
@@ -114,4 +125,27 @@ export async function deleteTodo(id: string) {
     .eq('id', id)
   
   if (error) throw error
+}
+
+// Comments functions
+export async function getCommentsByTodoId(todoId: string) {
+  const { data, error } = await supabase
+    .from('comments')
+    .select('*')
+    .eq('todo_id', todoId)
+    .order('created_at', { ascending: true })
+  
+  if (error) throw error
+  return data || []
+}
+
+export async function createComment(comment: Database['public']['Tables']['comments']['Insert']) {
+  const { data, error } = await supabase
+    .from('comments')
+    .insert(comment)
+    .select()
+    .single()
+  
+  if (error) throw error
+  return data
 }

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -140,6 +141,7 @@ async function registerUser(name: string, password: string, organizationId: stri
 }
 
 export default function Home() {
+  const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
   const [todos, setTodos] = useState<Todo[]>([])
   const [newTodo, setNewTodo] = useState('')
@@ -265,14 +267,9 @@ export default function Home() {
         if (event.key === 'ArrowUp') {
           event.preventDefault()
           setSelectedTodoIndex(prev => {
-            // Filter todos inline to avoid dependency issues
-            const filteredTodos = todos.filter(todo => {
-              if (!currentUser) return false
-              const assignees = todo.assigned_to.split(', ').map(name => name.trim())
-              return assignees.includes(currentUser.name) && todo.organization_id === currentUser.organization_id
-            })
-            if (filteredTodos.length === 0) return -1
-            if (prev <= 0) return filteredTodos.length - 1
+            // Use userTodos which respects all active filters
+            if (userTodos.length === 0) return -1
+            if (prev <= 0) return userTodos.length - 1
             return prev - 1
           })
           return
@@ -281,71 +278,23 @@ export default function Home() {
         if (event.key === 'ArrowDown') {
           event.preventDefault()
           setSelectedTodoIndex(prev => {
-            // Filter todos inline to avoid dependency issues
-            const filteredTodos = todos.filter(todo => {
-              if (!currentUser) return false
-              const assignees = todo.assigned_to.split(', ').map(name => name.trim())
-              return assignees.includes(currentUser.name) && todo.organization_id === currentUser.organization_id
-            })
-            if (filteredTodos.length === 0) return -1
-            if (prev >= filteredTodos.length - 1) return 0
+            // Use userTodos which respects all active filters
+            if (userTodos.length === 0) return -1
+            if (prev >= userTodos.length - 1) return 0
             return prev + 1
           })
           return
         }
       }
       
-      // Enter to complete selected todo (only when not in input)
+      // Enter to open detail page (only when not in input)
       if (event.key === 'Enter' && !inputRef.current?.contains(document.activeElement) && selectedTodoIndex >= 0) {
         event.preventDefault()
         // Use userTodos which respects all filters
         const selectedTodo = userTodos[selectedTodoIndex]
-        if (selectedTodo && currentUser) {
-          // Call the completion function directly
-          const todo = todos.find(t => t.id === selectedTodo.id)
-          if (todo) {
-            if (todo.completed) {
-              // Delete completed todo
-              fetch(`/api/todos?id=${todo.id}`, { method: 'DELETE' })
-                .then(() => setTodos(prev => prev.filter(t => t.id !== todo.id)))
-                .catch(err => console.error('Failed to delete todo:', err))
-            } else {
-              // Complete todo
-              const completedBy = todo.completed_by ? todo.completed_by.split(', ').map(name => name.trim()) : []
-              const isCurrentUserCompleted = completedBy.includes(currentUser.name)
-              
-              let newCompletedBy
-              if (isCurrentUserCompleted) {
-                // Remove current user from completed list
-                newCompletedBy = completedBy.filter(name => name !== currentUser.name).join(', ')
-              } else {
-                // Add current user to completed list
-                newCompletedBy = [...completedBy, currentUser.name].join(', ')
-              }
-              
-              // Check if all assignees have completed
-              const assignees = todo.assigned_to.split(', ').map(name => name.trim())
-              const allCompleted = assignees.every(assignee => newCompletedBy.split(', ').includes(assignee))
-              
-              fetch('/api/todos', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  id: todo.id,
-                  completed: allCompleted,
-                  completed_by: newCompletedBy
-                })
-              })
-              .then(() => {
-                setTodos(prev => prev.map(t => 
-                  t.id === todo.id 
-                    ? { ...t, completed: allCompleted, completed_by: newCompletedBy }
-                    : t
-                ))
-              })
-              .catch(err => console.error('Failed to update todo:', err))
-            }
-          }
+        if (selectedTodo) {
+          // Navigate to detail page using Next.js router for smoother transition
+          router.push(`/todo/${selectedTodo.id}`)
         }
         return
       }
@@ -397,6 +346,20 @@ export default function Home() {
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [todos, selectedTodoIndex, currentUser, userTodos])
+
+  // Click anywhere to exit navigation mode
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      // Reset selection when clicking outside of todo items
+      const target = e.target as HTMLElement
+      if (!target.closest('[data-todo-item]') && selectedTodoIndex !== -1) {
+        setSelectedTodoIndex(-1)
+      }
+    }
+
+    document.addEventListener('click', handleClick)
+    return () => document.removeEventListener('click', handleClick)
+  }, [selectedTodoIndex])
 
   // Default task suggestions
   const defaultSuggestions = [
@@ -454,12 +417,8 @@ export default function Home() {
       setCurrentOrganization({ ...org, name: capitalizeWords(org.name) })
     }
     
-    // Keep loading state for 200ms to show skeleton animation (quick but smooth)
-    const timer = setTimeout(() => {
-      setIsLoading(false)
-    }, 200)
-
-    return () => clearTimeout(timer)
+    // Remove loading state immediately for faster UX
+    setIsLoading(false)
   }, [])
 
   // Persist currentUser to localStorage
@@ -1410,28 +1369,37 @@ function TodoItem({ todo, currentUser, onCompleteOrDelete, onMoveToTop, isShakin
   alertMessage?: string
 }) {
   const [isHovered, setIsHovered] = useState(false)
+  const router = useRouter()
+
+  const handleClick = (e: React.MouseEvent) => {
+    // Don't navigate if clicking on buttons or badges
+    const target = e.target as HTMLElement
+    if (target.closest('button') || target.closest('[data-no-navigate]')) {
+      onSelect(todo.id)
+      return
+    }
+    // Navigate to detail page
+    router.push(`/todo/${todo.id}`)
+  }
+
+  const handleMouseEnter = () => {
+    setIsHovered(true)
+    // Prefetch the detail page for faster navigation
+    router.prefetch(`/todo/${todo.id}`)
+  }
 
   return (
-    <div className="flex items-center gap-3">
+    <div 
+      className="flex items-center gap-2" 
+      data-todo-item
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={() => setIsHovered(false)}
+    >
       <div 
         className={`group cursor-pointer flex-1 relative ${isShaking ? 'z-[9999]' : ''}`}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-        onClick={() => onSelect(todo.id)}
+        onClick={handleClick}
       >
       {isShaking && <div className="absolute top-0 bottom-0 bg-background -z-10" style={{ left: '-100vw', right: '-100vw' }} />}
-      
-      {/* Up button - appears on hover (only for incomplete tasks) */}
-      {isHovered && !todo.completed && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onMoveToTop(todo.id)}
-          className="absolute top-2 right-2 z-10 h-6 w-6 p-0 bg-background border border-border shadow-sm hover:bg-muted cursor-pointer"
-        >
-          <ArrowUp className="h-3 w-3" />
-        </Button>
-      )}
       
       <Item 
         variant="outline" 
@@ -1497,6 +1465,23 @@ function TodoItem({ todo, currentUser, onCompleteOrDelete, onMoveToTop, isShakin
         </Button>
       </ItemActions>
       </Item>
+      </div>
+      
+      {/* Up button - appears on hover (only for incomplete tasks) */}
+      <div className="flex-shrink-0 w-6">
+        {isHovered && !todo.completed && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation()
+              onMoveToTop(todo.id)
+            }}
+            className="h-6 w-6 p-0 bg-background border border-border shadow-sm hover:bg-muted cursor-pointer"
+          >
+            <ArrowUp className="h-3 w-3" />
+          </Button>
+        )}
       </div>
     </div>
   )

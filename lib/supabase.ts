@@ -53,6 +53,35 @@ export interface Database {
           created_at?: string
         }
       }
+      comments: {
+        Row: {
+          id: string
+          todo_id: string
+          user_id: string
+          user_name: string
+          text: string
+          attached_links: string[]
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          todo_id: string
+          user_id: string
+          user_name: string
+          text: string
+          attached_links?: string[]
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          todo_id?: string
+          user_id?: string
+          user_name?: string
+          text?: string
+          attached_links?: string[]
+          created_at?: string
+        }
+      }
       todos: {
         Row: {
           id: string
