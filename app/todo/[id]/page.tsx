@@ -92,6 +92,13 @@ export default function TodoDetail() {
           setAllUsers(capitalizedUsers)
         }
         
+        // Mark item as viewed
+        fetch('/api/user-views', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: currentUser.id, todoId: params.id })
+        }).catch(err => console.error('Failed to update view:', err))
+        
         // All data loaded, hide skeleton
         setLoading(false)
       })

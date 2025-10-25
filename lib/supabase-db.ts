@@ -149,3 +149,31 @@ export async function createComment(comment: Database['public']['Tables']['comme
   if (error) throw error
   return data
 }
+
+// User item views operations
+export async function updateUserItemView(userId: string, todoId: string) {
+  const { data, error } = await supabase
+    .from('user_item_views')
+    .upsert({
+      user_id: userId,
+      todo_id: todoId,
+      last_viewed_at: new Date().toISOString()
+    }, {
+      onConflict: 'user_id,todo_id'
+    })
+    .select()
+    .single()
+  
+  if (error) throw error
+  return data
+}
+
+export async function getUserItemViews(userId: string) {
+  const { data, error } = await supabase
+    .from('user_item_views')
+    .select('*')
+    .eq('user_id', userId)
+  
+  if (error) throw error
+  return data || []
+}

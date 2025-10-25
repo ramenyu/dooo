@@ -166,6 +166,8 @@ export default function Home() {
   const [showAlert, setShowAlert] = useState(false)
   const [alertMessage, setAlertMessage] = useState('')
   const [alertTodoId, setAlertTodoId] = useState<string | null>(null)
+  const [userItemViews, setUserItemViews] = useState<Map<string, string>>(new Map()) // todoId -> last_viewed_at
+  const [latestComments, setLatestComments] = useState<Map<string, { timestamp: string; author: string }>>(new Map()) // todoId -> { timestamp, author }
   const inputRef = useRef<HTMLInputElement>(null)
 
   // Memoized computations - MUST be before any conditional returns
@@ -458,7 +460,79 @@ export default function Home() {
     }
   }, [currentUser])
 
-  // Poll for updates every 10 seconds when user is logged in (reduced for performance)
+  // Load user item views when user logs in
+  useEffect(() => {
+    if (currentUser && currentUser.id) {
+      fetch(`/api/user-views?userId=${currentUser.id}`)
+        .then(res => res.json())
+        .then(views => {
+          const viewsMap = new Map<string, string>()
+          views.forEach((view: { todo_id: string; last_viewed_at: string }) => {
+            viewsMap.set(view.todo_id, view.last_viewed_at)
+          })
+          setUserItemViews(viewsMap)
+        })
+        .catch(err => {
+          console.error('Failed to load user views:', err)
+        })
+    }
+  }, [currentUser])
+
+  // Load organization users for @ mentions when user logs in
+  useEffect(() => {
+    if (currentUser && currentUser.organization_id && allUsers.length === 0) {
+      fetchUsersByOrganization(currentUser.organization_id)
+        .then(orgUsers => {
+          const capitalizedOrgUsers = orgUsers.map(u => ({ ...u, name: capitalizeWords(u.name) }))
+          console.log('Organization users loaded for @ mentions:', capitalizedOrgUsers)
+          setAllUsers(capitalizedOrgUsers)
+        })
+        .catch(err => {
+          console.error('Failed to load organization users:', err)
+        })
+    }
+  }, [currentUser, allUsers.length])
+
+  // Fetch latest comment timestamps and authors for all todos
+  const fetchCommentTimestamps = useCallback(async () => {
+    if (!currentUser || userTodos.length === 0) return
+    
+    const commentMap = new Map<string, { timestamp: string; author: string }>()
+    
+    await Promise.all(
+      userTodos.map(async (todo) => {
+        try {
+          const response = await fetch(`/api/comments?todoId=${todo.id}`)
+          const comments = await response.json()
+          
+          if (Array.isArray(comments) && comments.length > 0) {
+            // Get the latest comment timestamp and author
+            const latestComment = comments[comments.length - 1]
+            commentMap.set(todo.id, {
+              timestamp: latestComment.created_at,
+              author: latestComment.user_name
+            })
+          }
+        } catch (err) {
+          console.error(`Failed to fetch comments for todo ${todo.id}:`, err)
+        }
+      })
+    )
+    
+    setLatestComments(commentMap)
+  }, [currentUser, userTodos])
+
+  useEffect(() => {
+    if (!currentUser || userTodos.length === 0) return
+
+    fetchCommentTimestamps()
+    
+    // Poll for new comments every 1 second (near real-time)
+    const interval = setInterval(fetchCommentTimestamps, 1000)
+    return () => clearInterval(interval)
+  }, [currentUser, userTodos, fetchCommentTimestamps])
+
+  // Poll for updates every 1 second when user is logged in (near real-time)
   useEffect(() => {
     if (!currentUser || !currentOrganization) return
 
@@ -526,7 +600,7 @@ export default function Home() {
       } catch (error) {
         console.error('Failed to fetch updated todos:', error)
       }
-    }, 10000) // Reduced from 5000ms to 10000ms for better performance
+    }, 1000) // Poll every 1 second for near real-time updates
 
     return () => clearInterval(interval)
   }, [currentUser, currentOrganization, todos])
@@ -631,7 +705,11 @@ export default function Home() {
       }
 
       const createdTodo = await createTodo(newTodoData)
-      setTodos(prev => [...prev, createdTodo])
+      
+      // Immediately fetch updated todos for all users (no delay)
+      const updatedTodos = await fetchTodos(currentUser.name, currentUser.organization_id)
+      setTodos(updatedTodos)
+      
       setNewTodo('')
       setCompletedMentions([])
       setAttachedLinks([]) // Clear attached links
@@ -870,10 +948,17 @@ export default function Home() {
       return // Exit early since we've modified the input
     }
     
-    // Handle user suggestions
-    const atMatch = value.match(/@(\w*)$/)
-    if (atMatch) {
-      const query = atMatch[1].toLowerCase()
+    // Handle user suggestions - check for @ anywhere followed by word characters
+    // Match the last @ in the string followed by any word characters
+    const atMatch = value.match(/@(\w*)(?=\s|$)/)
+    const lastAtIndex = value.lastIndexOf('@')
+    const hasAtSymbol = lastAtIndex !== -1
+    
+    if (hasAtSymbol && atMatch) {
+      // Extract the query after the last @
+      const textAfterAt = value.substring(lastAtIndex + 1)
+      const query = textAfterAt.match(/^(\w*)/)?.[1] || ''
+      
       const filtered = allUsers.filter(user => 
         user.name.toLowerCase().startsWith(query.toLowerCase()) && 
         user.id !== currentUser?.id && // Don't suggest current user
@@ -1177,8 +1262,8 @@ export default function Home() {
           </div>
           
           {/* Scrollable todo list */}
-          <div className="max-h-[calc(100vh-22rem)] overflow-y-auto custom-scrollbar">
-            <div className="space-y-3 px-2">
+          <div className="max-h-[calc(100vh-22rem)] overflow-y-auto custom-scrollbar pr-1">
+            <div className="space-y-3 pl-2 pr-3 pt-1">
             {userTodos.length === 0 ? (
               <Card className="border border-border bg-card">
                 <CardContent className="p-8 text-center">
@@ -1186,25 +1271,60 @@ export default function Home() {
                 </CardContent>
               </Card>
             ) : (
-              userTodos.map((todo, index) => (
-                <TodoItem
-                  key={todo.id}
-                  todo={todo}
-                  currentUser={currentUser}
-                  onCompleteOrDelete={handleCompleteOrDelete}
-                  onMoveToTop={handleMoveToTop}
-                  isShaking={shakingTodos.has(todo.id)}
-                  isSelected={selectedTodoIndex === index}
-                  onSelect={(todoId) => {
-                    const todoIndex = userTodos.findIndex(t => t.id === todoId)
-                    console.log('Todo clicked, todoId:', todoId, 'todoIndex:', todoIndex)
-                    if (todoIndex !== -1) {
-                      setSelectedTodoIndex(todoIndex)
-                    }
-                  }}
-                  alertMessage={showAlert && alertTodoId === todo.id ? alertMessage : undefined}
-                />
-              ))
+              userTodos.map((todo, index) => {
+                // Check if this todo has new activity (new item or new comment)
+                const lastViewed = userItemViews.get(todo.id)
+                const latestComment = latestComments.get(todo.id)
+                const isCreatedByMe = todo.created_by === currentUser?.name
+                
+                // Show notification dot if:
+                // 1. New item created by someone else (not viewed yet)
+                // 2. New comment added by someone else (after last view) - even on my own items
+                const hasNewItemByOthers = !isCreatedByMe && (!lastViewed || new Date(todo.created_at) > new Date(lastViewed))
+                const hasNewCommentByOthers = latestComment && 
+                  latestComment.author !== currentUser?.name && 
+                  (!lastViewed || new Date(latestComment.timestamp) > new Date(lastViewed))
+                
+                const hasNewActivity = Boolean(hasNewItemByOthers || hasNewCommentByOthers)
+                
+                return (
+                  <TodoItem
+                    key={todo.id}
+                    todo={todo}
+                    currentUser={currentUser}
+                    onCompleteOrDelete={handleCompleteOrDelete}
+                    onMoveToTop={handleMoveToTop}
+                    isShaking={shakingTodos.has(todo.id)}
+                    isSelected={selectedTodoIndex === index}
+                    onSelect={(todoId) => {
+                      const todoIndex = userTodos.findIndex(t => t.id === todoId)
+                      console.log('Todo clicked, todoId:', todoId, 'todoIndex:', todoIndex)
+                      if (todoIndex !== -1) {
+                        setSelectedTodoIndex(todoIndex)
+                      }
+                    }}
+                    alertMessage={showAlert && alertTodoId === todo.id ? alertMessage : undefined}
+                    hasNewActivity={hasNewActivity}
+                    onMarkAsViewed={() => {
+                      // Update view in backend
+                      if (currentUser?.id) {
+                        fetch('/api/user-views', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ userId: currentUser.id, todoId: todo.id })
+                        }).then(() => {
+                          // Update local state
+                          setUserItemViews(prev => {
+                            const newMap = new Map(prev)
+                            newMap.set(todo.id, new Date().toISOString())
+                            return newMap
+                          })
+                        })
+                      }
+                    }}
+                  />
+                )
+              })
             )}
             </div>
           </div>
@@ -1358,7 +1478,7 @@ export default function Home() {
   )
 }
 
-function TodoItem({ todo, currentUser, onCompleteOrDelete, onMoveToTop, isShaking, isSelected, onSelect, alertMessage }: {
+function TodoItem({ todo, currentUser, onCompleteOrDelete, onMoveToTop, isShaking, isSelected, onSelect, alertMessage, hasNewActivity, onMarkAsViewed }: {
   todo: Todo
   currentUser: User
   onCompleteOrDelete: (id: string) => void
@@ -1367,6 +1487,8 @@ function TodoItem({ todo, currentUser, onCompleteOrDelete, onMoveToTop, isShakin
   isSelected: boolean
   onSelect: (todoId: string) => void
   alertMessage?: string
+  hasNewActivity?: boolean
+  onMarkAsViewed?: () => void
 }) {
   const [isHovered, setIsHovered] = useState(false)
   const router = useRouter()
@@ -1377,6 +1499,10 @@ function TodoItem({ todo, currentUser, onCompleteOrDelete, onMoveToTop, isShakin
     if (target.closest('button') || target.closest('[data-no-navigate]')) {
       onSelect(todo.id)
       return
+    }
+    // Mark as viewed when clicking
+    if (onMarkAsViewed) {
+      onMarkAsViewed()
     }
     // Navigate to detail page
     router.push(`/todo/${todo.id}`)
@@ -1390,16 +1516,23 @@ function TodoItem({ todo, currentUser, onCompleteOrDelete, onMoveToTop, isShakin
 
   return (
     <div 
-      className="flex items-center gap-2" 
+      className="relative" 
       data-todo-item
       onMouseEnter={handleMouseEnter}
       onMouseLeave={() => setIsHovered(false)}
     >
       <div 
-        className={`group cursor-pointer flex-1 relative ${isShaking ? 'z-[9999]' : ''}`}
+        className={`group cursor-pointer relative ${isShaking ? 'z-[9999]' : 'z-10'}`}
         onClick={handleClick}
       >
       {isShaking && <div className="absolute top-0 bottom-0 bg-background -z-10" style={{ left: '-100vw', right: '-100vw' }} />}
+      
+      {/* Notification dot - top right corner, outside the card */}
+      {hasNewActivity && (
+        <div className="absolute -top-0.5 -right-0.5 z-[100]">
+          <div className="h-2.5 w-2.5 bg-green-500/80 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.8)] animate-pulse" />
+        </div>
+      )}
       
       <Item 
         variant="outline" 
@@ -1465,23 +1598,6 @@ function TodoItem({ todo, currentUser, onCompleteOrDelete, onMoveToTop, isShakin
         </Button>
       </ItemActions>
       </Item>
-      </div>
-      
-      {/* Up button - appears on hover (only for incomplete tasks) */}
-      <div className="flex-shrink-0 w-6">
-        {isHovered && !todo.completed && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation()
-              onMoveToTop(todo.id)
-            }}
-            className="h-6 w-6 p-0 bg-background border border-border shadow-sm hover:bg-muted cursor-pointer"
-          >
-            <ArrowUp className="h-3 w-3" />
-          </Button>
-        )}
       </div>
     </div>
   )

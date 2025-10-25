@@ -123,6 +123,29 @@ export interface Database {
           created_at?: string
         }
       }
+      user_item_views: {
+        Row: {
+          id: string
+          user_id: string
+          todo_id: string
+          last_viewed_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          todo_id: string
+          last_viewed_at?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          todo_id?: string
+          last_viewed_at?: string
+          created_at?: string
+        }
+      }
     }
   }
 }
