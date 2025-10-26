@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { openai } from '@/lib/openai-client'
+import { getOpenAIClient } from '@/lib/openai-client'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
 
     console.log('Testing OpenAI with proxy support...')
 
+    const openai = getOpenAIClient()
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [

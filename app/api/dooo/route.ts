@@ -5,14 +5,16 @@ import { HttpsProxyAgent } from 'https-proxy-agent'
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
-// Create proxy agent only if proxy environment variables are set (local dev only)
-const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY
-const httpAgent = proxyUrl ? new HttpsProxyAgent(proxyUrl) : undefined
+// Create OpenAI client lazily (only when needed, not at build time)
+function getOpenAIClient() {
+  const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY
+  const httpAgent = proxyUrl ? new HttpsProxyAgent(proxyUrl) : undefined
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  ...(httpAgent && { httpAgent: httpAgent as any }),
-})
+  return new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY || 'dummy-key-for-build',
+    ...(httpAgent && { httpAgent: httpAgent as any }),
+  })
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -48,6 +50,7 @@ export async function POST(request: NextRequest) {
 
       console.log('[Dooo] Calling OpenAI API for:', todoText)
       try {
+        const openai = getOpenAIClient()
         const completion = await openai.chat.completions.create({
           model: 'gpt-4.1-nano-2025-04-14',
           messages: [
