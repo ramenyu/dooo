@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       try {
         const openai = getOpenAIClient()
         const completion = await openai.chat.completions.create({
-          model: 'gpt-4.1-nano-2025-04-14',
+          model: 'gpt-4o-mini', // Use widely available model
           messages: [
             {
               role: 'system',
@@ -71,6 +71,7 @@ export async function POST(request: NextRequest) {
         })
 
         response = completion.choices[0]?.message?.content || 'I apologize, but I was unable to generate a response.'
+        console.log('[Dooo] OpenAI API success! Response:', response.substring(0, 50) + '...')
       } catch (error) {
         console.error('[Dooo] OpenAI API error, falling back to mock:', error)
         // Fallback to mock if OpenAI fails
