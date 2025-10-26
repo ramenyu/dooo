@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ArrowLeft, Paperclip, User, Clock } from 'lucide-react'
+import { ArrowLeft, Paperclip, User, Clock, Cpu } from 'lucide-react'
 
 interface Todo {
   id: string
@@ -41,6 +41,25 @@ const capitalizeWords = (str: string): string => {
     .split(' ')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(' ')
+}
+
+// Helper function to format comment text (convert markdown-like formatting)
+const formatCommentText = (text: string) => {
+  const lines = text.split('\n').filter(line => line.trim() !== '')
+  return (
+    <span>
+      {lines.map((line, i) => {
+        // Handle bold text **text**
+        const formatted = line.replace(/\*\*(.+?)\*\*/g, '<strong class="text-foreground">$1</strong>')
+        return (
+          <span key={i}>
+            <span dangerouslySetInnerHTML={{ __html: formatted }} />
+            {i < lines.length - 1 && <><br /><br /></>}
+          </span>
+        )
+      })}
+    </span>
+  )
 }
 
 export default function TodoDetail() {
@@ -363,26 +382,33 @@ export default function TodoDetail() {
 
             {/* Comments list */}
             {comments.map((comment) => (
-              <div key={comment.id} className="flex items-center gap-2 mb-4">
-                <User className="h-3 w-3 text-muted-foreground" />
-                <p className="text-xs text-muted-foreground">
-                  <span className="text-foreground">{capitalizeWords(comment.user_name)}</span> {comment.text}
-                  {comment.attached_links && comment.attached_links.length > 0 && (
-                    <span className="inline-flex items-center gap-1 ml-2">
-                      {comment.attached_links.map((url, index) => (
-                        <Badge 
-                          key={index} 
-                          variant="secondary" 
-                          className="text-xs font-normal cursor-pointer hover:bg-muted-foreground/20"
-                          onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}
-                        >
-                          <Paperclip className="h-3 w-3 mr-1" />
-                          {url.length > 25 ? `${url.substring(0, 25)}...` : url}
-                        </Badge>
-                      ))}
-                    </span>
-                  )}
-                </p>
+              <div key={comment.id} className="flex items-start gap-2 mb-4">
+                {comment.user_name.toLowerCase() === 'dooo' ? (
+                  <Cpu className="h-3 w-3 text-muted-foreground mt-0.5" />
+                ) : (
+                  <User className="h-3 w-3 text-muted-foreground mt-0.5" />
+                )}
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground">
+                    <span className="text-foreground">{capitalizeWords(comment.user_name)}</span>{' '}
+                    {formatCommentText(comment.text)}
+                    {comment.attached_links && comment.attached_links.length > 0 && (
+                      <span className="inline-flex items-center gap-1 ml-2">
+                        {comment.attached_links.map((url, index) => (
+                          <Badge 
+                            key={index} 
+                            variant="secondary" 
+                            className="text-xs font-normal cursor-pointer hover:bg-muted-foreground/20"
+                            onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}
+                          >
+                            <Paperclip className="h-3 w-3 mr-1" />
+                            {url.length > 25 ? `${url.substring(0, 25)}...` : url}
+                          </Badge>
+                        ))}
+                      </span>
+                    )}
+                  </p>
+                </div>
               </div>
             ))}
 

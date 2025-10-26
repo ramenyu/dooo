@@ -27,9 +27,9 @@ export async function POST(request: NextRequest) {
     let response: string
     let usedMock = false
 
-    // Use real API if key is configured, otherwise use mock
+    // Use mock in development, real API in production
     const hasApiKey = !!process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'dummy-key-for-build'
-    const useMock = !hasApiKey
+    const useMock = process.env.NODE_ENV === 'development' || !hasApiKey
     
     console.log('[Dooo] Environment:', {
       NODE_ENV: process.env.NODE_ENV,
@@ -41,11 +41,11 @@ export async function POST(request: NextRequest) {
       // Mock response for local development
       console.log('[Dooo Mock] Generating mock response for:', todoText)
       const mockResponses = [
-        `I'll help you with "${todoText}"! Here's what I suggest: Break it down into smaller steps and tackle them one at a time. Let me know if you need more specific guidance! 🚀`,
-        `Great task! For "${todoText}", I recommend starting with research and planning. Would you like me to help you create a checklist?`,
-        `Interesting! "${todoText}" sounds important. My advice: Set a clear deadline, gather your resources, and start with the most challenging part first. You've got this! 💪`,
-        `Got it! "${todoText}" - I'd suggest documenting your approach as you go. It'll help you stay organized and track progress. Need any specific tips?`,
-        `Perfect! For "${todoText}", consider breaking it into: 1) Research phase, 2) Planning phase, 3) Execution phase. Start with step 1 and work your way through! 📝`
+        `I'll help you with "${todoText}"! Here's my comprehensive approach:\n\n1. **Initial Planning**: Start by breaking down the task into smaller, manageable components. This makes it less overwhelming and easier to track progress.\n\n2. **Research Phase**: Gather all necessary information and resources before diving in. This saves time later and helps you avoid common pitfalls.\n\n3. **Execution Strategy**: Focus on one component at a time, starting with the most critical or time-sensitive parts. This ensures steady progress.\n\n4. **Review & Iterate**: Regularly check your work against your goals and adjust as needed.\n\nLet me know if you need more specific guidance on any of these steps! 🚀`,
+        `Great task! For "${todoText}", I recommend a structured approach:\n\n**Phase 1 - Foundation**\n• Define clear objectives and success criteria\n• Identify potential challenges early\n• Set realistic milestones and deadlines\n\n**Phase 2 - Implementation**\n• Start with the most important aspects\n• Document your process and decisions\n• Test and validate as you go\n\n**Phase 3 - Refinement**\n• Review and optimize your work\n• Gather feedback if applicable\n• Make final adjustments\n\nWould you like me to elaborate on any specific phase?`,
+        `Interesting! "${todoText}" sounds important. Here's my detailed advice:\n\nFirst, take a moment to visualize the end result. What does success look like? Once you have that clear picture, work backwards to create your action plan.\n\nConsider these key points:\n• Set a clear, achievable deadline to maintain momentum\n• Gather all necessary resources upfront to avoid interruptions\n• Start with the most challenging aspects when your energy is highest\n• Build in buffer time for unexpected issues\n• Celebrate small wins along the way to stay motivated\n\nRemember: Progress over perfection. You've got this! 💪`,
+        `Got it! For "${todoText}", here are my recommendations:\n\n**Organization Tips:**\n1. Create a dedicated workspace or document for this task\n2. Document your approach and key decisions as you go\n3. Set up regular check-ins with yourself to assess progress\n4. Keep notes on what works and what doesn't\n\n**Productivity Strategies:**\n• Time-box your work sessions (e.g., 45 min work, 15 min break)\n• Eliminate distractions during focused work time\n• Use templates or frameworks if available\n• Don't hesitate to ask for help when needed\n\nThis systematic approach will help you stay organized and make steady progress. Need any specific tips on implementation?`,
+        `Perfect! For "${todoText}", let me suggest a comprehensive three-phase approach:\n\n**📋 Phase 1: Research & Planning (20% of time)**\n• Understand the full scope and requirements\n• Identify dependencies and prerequisites\n• Create a detailed action plan with milestones\n• Set up your tools and environment\n\n**🚀 Phase 2: Execution (60% of time)**\n• Follow your plan systematically\n• Track progress against milestones\n• Adapt and adjust as you learn\n• Document important decisions\n\n**✨ Phase 3: Review & Polish (20% of time)**\n• Test thoroughly and validate results\n• Refine and optimize\n• Document lessons learned\n• Prepare for next steps\n\nStart with Phase 1 and work your way through. Each phase builds on the previous one! 📝`
       ]
       response = mockResponses[Math.floor(Math.random() * mockResponses.length)]
       usedMock = true
