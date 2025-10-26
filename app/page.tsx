@@ -706,6 +706,9 @@ export default function Home() {
 
       const createdTodo = await createTodo(newTodoData)
       
+      // Check if Dooo was mentioned
+      const isDoooMentioned = assignees.toLowerCase().includes('dooo')
+      
       // Immediately fetch updated todos for all users (no delay)
       const updatedTodos = await fetchTodos(currentUser.name, currentUser.organization_id)
       setTodos(updatedTodos)
@@ -717,6 +720,29 @@ export default function Home() {
       
       // Blur the input to exit focus so keyboard navigation works immediately
       inputRef.current?.blur()
+      
+      // If Dooo was mentioned, call the Dooo API
+      if (isDoooMentioned) {
+        console.log('Calling Dooo for task:', createdTodo.id)
+        // Call Dooo API in the background - don't await to avoid blocking UI
+        fetch('/api/dooo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            todoId: createdTodo.id,
+            todoText: createdTodo.text,
+            userId: currentUser.id,
+            userName: currentUser.name
+          })
+        }).then(res => res.json())
+          .then(data => {
+            console.log('Dooo responded:', data)
+            // Refresh comments will happen automatically via polling
+          })
+          .catch(err => {
+            console.error('Dooo failed:', err)
+          })
+      }
     } catch (error) {
       console.error('Failed to create todo:', error)
       alert('Failed to create todo. Please try again.')
@@ -959,11 +985,25 @@ export default function Home() {
       const textAfterAt = value.substring(lastAtIndex + 1)
       const query = textAfterAt.match(/^(\w*)/)?.[1] || ''
       
+      // Filter real users
       const filtered = allUsers.filter(user => 
         user.name.toLowerCase().startsWith(query.toLowerCase()) && 
         user.id !== currentUser?.id && // Don't suggest current user
         user.organization_id === currentUser?.organization_id // Only show users from same organization
       )
+      
+      // Add Dooo (AI assistant) if it matches the query
+      const doooUser: User = {
+        id: 'dooo-ai',
+        name: 'Dooo',
+        organization_id: currentUser?.organization_id || '',
+        created_at: new Date().toISOString()
+      }
+      
+      if ('dooo'.startsWith(query.toLowerCase())) {
+        filtered.push(doooUser)
+      }
+      
       console.log('@ detected, query:', query, 'allUsers:', allUsers.length, 'filtered:', filtered.length)
       setFilteredUsers(filtered)
       setSelectedUserIndex(0) // Reset selection
@@ -1279,10 +1319,10 @@ export default function Home() {
                 
                 // Show notification dot if:
                 // 1. New item created by someone else (not viewed yet)
-                // 2. New comment added by someone else (after last view) - even on my own items
+                // 2. New comment added by someone else (after last view) - including Dooo
                 const hasNewItemByOthers = !isCreatedByMe && (!lastViewed || new Date(todo.created_at) > new Date(lastViewed))
                 const hasNewCommentByOthers = latestComment && 
-                  latestComment.author !== currentUser?.name && 
+                  latestComment.author !== currentUser?.name && // Not my own comment
                   (!lastViewed || new Date(latestComment.timestamp) > new Date(lastViewed))
                 
                 const hasNewActivity = Boolean(hasNewItemByOthers || hasNewCommentByOthers)

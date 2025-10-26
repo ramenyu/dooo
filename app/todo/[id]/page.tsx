@@ -172,15 +172,24 @@ export default function TodoDetail() {
     const lastWord = words[words.length - 1]
 
     if (lastWord.startsWith('@')) {
+      // Add Dooo (AI assistant) to the user list
+      const doooUser = {
+        id: 'dooo-ai',
+        name: 'Dooo',
+        organization_id: '',
+        created_at: new Date().toISOString()
+      }
+      const usersWithDooo = [...allUsers, doooUser]
+      
       if (lastWord.length === 1) {
         // Show all users when just @ is typed
-        setFilteredUsers(allUsers)
-        setShowUserSuggestions(allUsers.length > 0)
+        setFilteredUsers(usersWithDooo)
+        setShowUserSuggestions(usersWithDooo.length > 0)
         setSelectedUserIndex(0)
       } else {
         // Filter users based on search term
         const searchTerm = lastWord.substring(1).toLowerCase()
-        const matches = allUsers.filter(user =>
+        const matches = usersWithDooo.filter(user =>
           user.name.toLowerCase().includes(searchTerm)
         )
         setFilteredUsers(matches)

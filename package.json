@@ -19,13 +19,16 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
     "date-fns": "^2.30.0",
+    "https-proxy-agent": "^7.0.6",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.294.0",
     "next": "14.0.4",
+    "openai": "^6.7.0",
     "react": "^18",
     "react-dom": "^18",
     "tailwind-merge": "^2.0.0",
     "tailwindcss-animate": "^1.0.7",
+    "undici": "^7.16.0",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
