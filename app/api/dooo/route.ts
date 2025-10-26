@@ -29,6 +29,12 @@ export async function POST(request: NextRequest) {
 
     // Always use mock in development to avoid proxy issues
     const useMock = process.env.NODE_ENV === 'development'
+    
+    console.log('[Dooo] Environment:', {
+      NODE_ENV: process.env.NODE_ENV,
+      hasApiKey: !!process.env.OPENAI_API_KEY,
+      useMock
+    })
 
     if (useMock) {
       // Mock response for local development
