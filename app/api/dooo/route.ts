@@ -27,13 +27,14 @@ export async function POST(request: NextRequest) {
     let response: string
     let usedMock = false
 
-    // Always use mock in development to avoid proxy issues
-    const useMock = process.env.NODE_ENV === 'development'
+    // Use real API if key is configured, otherwise use mock
+    const hasApiKey = !!process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'dummy-key-for-build'
+    const useMock = !hasApiKey
     
     console.log('[Dooo] Environment:', {
       NODE_ENV: process.env.NODE_ENV,
-      hasApiKey: !!process.env.OPENAI_API_KEY,
-      useMock
+      hasApiKey: hasApiKey,
+      useMock: useMock
     })
 
     if (useMock) {
@@ -49,11 +50,7 @@ export async function POST(request: NextRequest) {
       response = mockResponses[Math.floor(Math.random() * mockResponses.length)]
       usedMock = true
     } else {
-      // Real OpenAI API call (production only)
-      if (!process.env.OPENAI_API_KEY) {
-        return NextResponse.json({ error: 'OpenAI API key not configured' }, { status: 500 })
-      }
-
+      // Real OpenAI API call
       console.log('[Dooo] Calling OpenAI API for:', todoText)
       try {
         const openai = getOpenAIClient()
