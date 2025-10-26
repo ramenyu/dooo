@@ -27,12 +27,14 @@ export async function POST(request: NextRequest) {
     let response: string
     let usedMock = false
 
-    // Use mock in development, real API in production
+    // Use mock ONLY in development without API key, real API in production
     const hasApiKey = !!process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'dummy-key-for-build'
-    const useMock = process.env.NODE_ENV === 'development' || !hasApiKey
+    const isProduction = process.env.NODE_ENV === 'production'
+    const useMock = !isProduction && !hasApiKey
     
     console.log('[Dooo] Environment:', {
       NODE_ENV: process.env.NODE_ENV,
+      isProduction: isProduction,
       hasApiKey: hasApiKey,
       useMock: useMock
     })
