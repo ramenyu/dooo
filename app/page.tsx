@@ -493,33 +493,48 @@ export default function Home() {
     }
   }, [currentUser, allUsers.length])
 
-  // Fetch latest comment timestamps and authors for all todos
+  // Fetch latest comment timestamps and authors for all todos (optimized batching)
   const fetchCommentTimestamps = useCallback(async () => {
     if (!currentUser || userTodos.length === 0) return
     
-    const commentMap = new Map<string, { timestamp: string; author: string }>()
+    // Skip if tab is not visible
+    if (document.hidden) return
     
-    await Promise.all(
-      userTodos.map(async (todo) => {
-        try {
-          const response = await fetch(`/api/comments?todoId=${todo.id}`)
-          const comments = await response.json()
-          
-          if (Array.isArray(comments) && comments.length > 0) {
-            // Get the latest comment timestamp and author
-            const latestComment = comments[comments.length - 1]
-            commentMap.set(todo.id, {
-              timestamp: latestComment.created_at,
-              author: latestComment.user_name
-            })
+    try {
+      // Batch fetch all comments in a single request (if API supports it)
+      // For now, we'll keep individual requests but with better error handling
+      const commentMap = new Map<string, { timestamp: string; author: string }>()
+      
+      // Fetch only for todos that are visible (limit to first 20)
+      const todosToFetch = userTodos.slice(0, 20)
+      
+      await Promise.all(
+        todosToFetch.map(async (todo) => {
+          try {
+            const response = await fetch(`/api/comments?todoId=${todo.id}`)
+            if (!response.ok) return
+            
+            const comments = await response.json()
+            
+            if (Array.isArray(comments) && comments.length > 0) {
+              // Get the latest comment timestamp and author
+              const latestComment = comments[comments.length - 1]
+              commentMap.set(todo.id, {
+                timestamp: latestComment.created_at,
+                author: latestComment.user_name
+              })
+            }
+          } catch (err) {
+            // Silently fail for individual todos to not block others
+            console.debug(`Failed to fetch comments for todo ${todo.id}`)
           }
-        } catch (err) {
-          console.error(`Failed to fetch comments for todo ${todo.id}:`, err)
-        }
-      })
-    )
-    
-    setLatestComments(commentMap)
+        })
+      )
+      
+      setLatestComments(commentMap)
+    } catch (err) {
+      console.error('Failed to fetch comment timestamps:', err)
+    }
   }, [currentUser, userTodos])
 
   useEffect(() => {
@@ -527,16 +542,37 @@ export default function Home() {
 
     fetchCommentTimestamps()
     
-    // Poll for new comments every 1 second (near real-time)
-    const interval = setInterval(fetchCommentTimestamps, 1000)
-    return () => clearInterval(interval)
+    // Poll for new comments every 5 seconds (balanced: responsive but efficient)
+    const interval = setInterval(fetchCommentTimestamps, 5000)
+    
+    // Resume polling when tab becomes visible
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchCommentTimestamps()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
   }, [currentUser, userTodos, fetchCommentTimestamps])
 
-  // Poll for updates every 1 second when user is logged in (near real-time)
+  // Poll for updates every 3 seconds when user is logged in (balanced: responsive + efficient)
   useEffect(() => {
     if (!currentUser || !currentOrganization) return
 
-    const interval = setInterval(async () => {
+    let isRequestInFlight = false
+
+    const pollTodos = async () => {
+      // Skip if previous request is still in flight
+      if (isRequestInFlight) return
+      
+      // Skip if tab is not visible
+      if (document.hidden) return
+
+      isRequestInFlight = true
       try {
         const updatedTodos = await fetchTodos(currentUser.name, currentUser.organization_id)
         
@@ -599,10 +635,29 @@ export default function Home() {
         setAllUsers(capitalizedOrgUsers)
       } catch (error) {
         console.error('Failed to fetch updated todos:', error)
+      } finally {
+        isRequestInFlight = false
       }
-    }, 1000) // Poll every 1 second for near real-time updates
+    }
 
-    return () => clearInterval(interval)
+    // Initial fetch
+    pollTodos()
+
+    // Poll every 3 seconds (balanced: responsive but efficient)
+    const interval = setInterval(pollTodos, 3000)
+
+    // Resume polling when tab becomes visible
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        pollTodos()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
   }, [currentUser, currentOrganization, todos])
 
   // Load users from localStorage for @ mentions
@@ -1561,11 +1616,11 @@ function TodoItem({ todo, currentUser, onCompleteOrDelete, onMoveToTop, isShakin
       onMouseEnter={handleMouseEnter}
       onMouseLeave={() => setIsHovered(false)}
     >
+      {isShaking && <div className="fixed inset-0 bg-background -z-10 pointer-events-none" />}
       <div 
-        className={`group cursor-pointer relative ${isShaking ? 'z-[9999]' : 'z-10'}`}
+        className={`group cursor-pointer relative ${isShaking ? 'z-[9999]' : ''}`}
         onClick={handleClick}
       >
-      {isShaking && <div className="absolute top-0 bottom-0 bg-background -z-10" style={{ left: '-100vw', right: '-100vw' }} />}
       
       {/* Notification dot - top right corner, outside the card */}
       {hasNewActivity && (

@@ -29,3 +29,5 @@ WHERE id = '0012bcb0-2159-4af6-a1d1-c7122573b532';
 -- Step 4: Verify we only have one "gradient" organization now
 SELECT * FROM organizations WHERE LOWER(name) = 'gradient';
 
+
+

@@ -29,3 +29,5 @@ CREATE POLICY "Users can update their own item views" ON user_item_views
 CREATE POLICY "Users can delete their own item views" ON user_item_views
   FOR DELETE USING (true);
 
+
+

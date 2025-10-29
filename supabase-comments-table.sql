@@ -30,3 +30,5 @@ CREATE POLICY "Comments can be updated by their creator" ON comments
 CREATE POLICY "Comments can be deleted by their creator" ON comments
   FOR DELETE USING (true);
 
+
+

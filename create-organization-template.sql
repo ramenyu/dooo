@@ -16,3 +16,5 @@ RETURNING *;
 -- To delete an organization (and all its users/todos due to CASCADE):
 -- DELETE FROM organizations WHERE name = 'organization-name';
 
+
+
